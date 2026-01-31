@@ -1,0 +1,22 @@
+# GodsEye Worker Dependencies
+
+# Core dependencies from main scraper
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
+playwright==1.57.0
+playwright-stealth==2.0.1
+python-dotenv==1.1.1
+pydantic==2.12.5
+
+# Message queue and database
+pika==1.3.2
+psycopg2-binary==2.9.11
+supabase==2.12.0
+
+# Additional dependencies for microservices
+aiofiles==25.1.0
+aiohttp==3.13.3
+httpx==0.28.1
+
+# Logging and utilities
+structlog==25.5.0
