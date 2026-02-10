@@ -270,13 +270,9 @@ class GoogleAIModeScraper:
             # Step 2: Handle cookie consent
             await self._handle_cookie_consent(page)
 
-            # Step 3: Perform search
+            # Step 3: Perform search and click AI Mode directly
             print(f"\n🔍 Searching for: '{query}'")
-            await self._human_search(page, query)
-
-            # Step 4: Click "AI Mode" link - THIS IS THE KEY DIFFERENCE!
-            print("\n🎯 Clicking 'AI Mode' link...")
-            ai_mode_clicked = await self._click_ai_mode_link(page)
+            ai_mode_clicked = await self._simple_search(page, query)
             
             if not ai_mode_clicked:
                 print("✗ Could not find or click AI Mode link")
@@ -818,44 +814,52 @@ class GoogleAIModeScraper:
         except:
             pass
 
-    async def _human_search(self, page: Page, query: str):
-        """Perform search with human-like typing"""
+    async def _simple_search(self, page: Page, query: str):
+        """Simple search using AI Mode directly"""
         try:
             # Find search box
             search_box = page.locator('textarea[name="q"], input[name="q"]').first
             await search_box.wait_for(state="visible", timeout=20000)
-
-            # Click and type with human-like delays
+            
+            # Click and fill
             await search_box.click()
-            await self._random_wait(0.1, 0.2)
-
-            await search_box.fill("")
-            await self._random_wait(0.05, 0.1)
-
-            # Type with random delays between characters
-            await search_box.type(query, delay=random.uniform(30, 80))
-            await self._random_wait(0.2, 0.4)
-
-            # Press Enter
-            await page.keyboard.press("Enter")
-            print("  ✓ Search submitted")
-
-            # Wait for URL to change
-            try:
-                await page.wait_for_url("**/search?**", wait_until="commit", timeout=10000)
-            except:
-                pass
-
-            # Wait for search results
-            try:
-                await page.locator("#search, #rso").first.wait_for(state="attached", timeout=20000)
-                await self._random_wait(1.0, 2.0)
-            except:
-                await self._random_wait(2, 3)
-
+            await self._random_wait(0.2, 0.3)
+            await search_box.fill(query)
+            await self._random_wait(0.3, 0.5)
+            
+            # Look for AI Mode link immediately (before pressing Enter)
+            print("🔍 Looking for AI Mode link...")
+            ai_mode_selectors = [
+                'a:has-text("AI Mode")',
+                'a:has-text("AI")',
+                'span:has-text("AI Mode")',
+                'div:has-text("AI") a',
+                'button:has-text("AI Mode")',
+                '[aria-label*="AI"]'
+            ]
+            
+            for selector in ai_mode_selectors:
+                try:
+                    ai_mode_link = page.locator(selector).first
+                    if await ai_mode_link.is_visible(timeout=2000):
+                        print(f"  ✓ Found AI Mode link with selector: {selector}")
+                        
+                        # Scroll into view and click
+                        await ai_mode_link.scroll_into_view_if_needed(timeout=3000)
+                        await self._random_wait(0.2, 0.4)
+                        await ai_mode_link.click()
+                        await self._random_wait(1.0, 2.0)
+                        print("  ✓ AI Mode link clicked successfully")
+                        return True
+                except:
+                    continue
+            
+            print("  ❌ Could not find or click AI Mode link")
+            return False
+            
         except Exception as e:
-            print(f"  ✗ Error performing search: {e}")
-            raise
+            print(f"  ✗ Error in simple search: {e}")
+            return False
 
     def _clean_text(self, text: str) -> str:
         """Clean extracted text"""

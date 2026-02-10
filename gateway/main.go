@@ -178,7 +178,7 @@ func main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "https://godseyes.world,https://www.godseyes.world,*",
+		AllowOrigins:     "*",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders:     "Origin,Content-Type,Accept,Authorization,X-Requested-With",
 		AllowCredentials: false,
@@ -197,7 +197,8 @@ func main() {
 	app.Get("/api/job-result/:jobId", jobResultHandler)
 
 	// Start server
-	port := getEnv("GATEWAY_PORT", "8080")
+	// FIX: Prioritize the system PORT (from Railway), then GATEWAY_PORT, then 8080
+	port := getEnv("PORT", getEnv("GATEWAY_PORT", "8080"))
 	log.Printf("🚀 GodsEye Gateway starting on port %s", port)
 	log.Printf("🐰 RabbitMQ URL: %s", getEnv("RABBITMQ_URL", "amqp://admin:admin123@localhost:5672/"))
 
