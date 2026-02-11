@@ -54,10 +54,10 @@ class WorkerService:
         self.supabase_key = os.getenv("SUPABASE_KEY")
         self.supabase: Client = None
         
-        # Proxy configuration (disabled for testing)
-        self.proxy_server = None  # os.getenv("PROXY_SERVER")
-        self.proxy_username = None  # os.getenv("PROXY_USERNAME")
-        self.proxy_password = None  # os.getenv("PROXY_PASSWORD")
+        # Proxy configuration
+        self.proxy_server = os.getenv("PROXY_SERVER")
+        self.proxy_username = os.getenv("PROXY_USERNAME")
+        self.proxy_password = os.getenv("PROXY_PASSWORD")
         
         # Storage mode configuration
         self.storage_mode_api = os.getenv("STORAGE_MODE_API", "false").lower() == "true"
