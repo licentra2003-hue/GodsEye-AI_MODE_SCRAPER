@@ -226,7 +226,11 @@ class WorkerService:
                     'Cache-Control': 'max-age=0'
                 },
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                proxy={"server": proxy_url} if proxy_url else None
+                proxy={
+                    "server": self.proxy_server,
+                    "username": self.proxy_username,
+                    "password": self.proxy_password
+                } 
             )
             
             page = await context.new_page()
