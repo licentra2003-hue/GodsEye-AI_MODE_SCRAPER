@@ -834,10 +834,10 @@ class GoogleAIModeScraper:
             search_box = page.locator('textarea[name="q"], input[name="q"]').first
             await search_box.wait_for(state="visible", timeout=20000)
             
-            # Click and fill
+            # Click and type like human
             await search_box.click()
             await self._random_wait(0.3, 0.5)
-            await search_box.fill(query)
+            await search_box.type(query, delay=random.uniform(30, 80))
             await self._random_wait(0.3, 0.5)
             
             print("Looking for AI Mode link using get_by_role...")
