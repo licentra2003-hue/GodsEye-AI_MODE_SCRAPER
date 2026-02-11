@@ -200,7 +200,7 @@ func main() {
 	// FIX: Prioritize the system PORT (from Railway), then GATEWAY_PORT, then 8080
 	port := getEnv("PORT", getEnv("GATEWAY_PORT", "8080"))
 	log.Printf("🚀 GodsEye Gateway starting on port %s", port)
-	log.Printf("🐰 RabbitMQ URL: %s", getEnv("RABBITMQ_URL", "amqp://admin:admin123@localhost:5672/"))
+	log.Printf("🐰 RabbitMQ URL: %s", getEnv("RABBITMQ_URL", "amqp://admin:admin123@godseye-rabbitmq:5672/"))
 
 	if err := app.Listen(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
@@ -208,7 +208,7 @@ func main() {
 }
 
 func initRabbitMQ() error {
-	rabbitMQURL := getEnv("RABBITMQ_URL", "amqp://admin:admin123@localhost:5672/")
+	rabbitMQURL := getEnv("RABBITMQ_URL", "amqp://admin:admin123@godseye-rabbitmq:5672/")
 
 	var err error
 	for i := 0; i < 5; i++ {

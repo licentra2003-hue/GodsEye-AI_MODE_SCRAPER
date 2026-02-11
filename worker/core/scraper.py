@@ -22,6 +22,19 @@ from pydantic import BaseModel, ConfigDict, Field
 
 load_dotenv()
 
+# ==================== DEBUG SCREENSHOT FUNCTION ====================
+
+async def take_debug_screenshot(page: Page, name: str):
+    """Take screenshot only if DEBUG=true in environment"""
+    if os.getenv("DEBUG", "false").lower() in ("true", "1", "yes"):
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"debug_{name}_{timestamp}.png"
+            await page.screenshot(path=filename, full_page=True)
+            print(f"  Debug screenshot saved: {filename}")
+        except Exception as e:
+            print(f"  Failed to take debug screenshot: {e}")
+
 # ==================== LOCATION CONFIGURATION ====================
 
 LOCATION_CONFIG = {
@@ -256,14 +269,14 @@ class GoogleAIModeScraper:
         timestamp = datetime.now().isoformat()
         
         print(f"\n{'='*80}")
-        print(f"🤖 Starting Google AI Mode Scraper")
+        print(f"Starting Google AI Mode Scraper")
         print(f"Query: {query}")
         print(f"Location: {location}")
         print(f"{'='*80}\n")
 
         try:
             # Step 1: Navigate to Google
-            print("🌐 Navigating to Google...")
+            print("Navigating to Google...")
             await page.goto("https://www.google.com/", wait_until="domcontentloaded", timeout=60000)
             await self._random_wait(0.5, 1.0)
 
@@ -271,11 +284,11 @@ class GoogleAIModeScraper:
             await self._handle_cookie_consent(page)
 
             # Step 3: Perform search and click AI Mode directly
-            print(f"\n🔍 Searching for: '{query}'")
+            print(f"Searching for: '{query}'")
             ai_mode_clicked = await self._simple_search(page, query)
             
             if not ai_mode_clicked:
-                print("✗ Could not find or click AI Mode link")
+                print("Could not find or click AI Mode link")
                 return AIModeResult(
                     query=query,
                     original_query=query,
@@ -287,13 +300,13 @@ class GoogleAIModeScraper:
                 )
 
             # Step 5: Wait for AI Mode to load and complete
-            print("\n⏳ Waiting for AI Mode response to complete...")
+            print("\nWaiting for AI Mode response to complete...")
             await self._wait_for_ai_mode_complete(page)
 
             # Check for bot detection
             page_text = await page.locator("body").inner_text()
             if self._is_bot_detected(page_text):
-                print("⚠️ Bot detection triggered!")
+                print("Bot detection triggered!")
                 return AIModeResult(
                     query=query,
                     original_query=query,
@@ -307,7 +320,7 @@ class GoogleAIModeScraper:
             # Step 6: Verify AI Mode is present
             ai_mode_present = await self._detect_ai_mode(page)
             if not ai_mode_present:
-                print("✗ No AI Mode content found")
+                print("No AI Mode content found")
                 return AIModeResult(
                     query=query,
                     original_query=query,
@@ -322,11 +335,11 @@ class GoogleAIModeScraper:
             await self._expand_content(page)
 
             # Step 8: Extract AI Mode text
-            print("\n📝 Extracting AI Mode text...")
+            print("\nExtracting AI Mode text...")
             ai_text = await self._extract_ai_mode_text(page)
             
             if not ai_text:
-                print("✗ Could not extract AI Mode text")
+                print("Could not extract AI Mode text")
                 return AIModeResult(
                     query=query,
                     original_query=query,
@@ -338,14 +351,14 @@ class GoogleAIModeScraper:
                 )
 
             # Step 9: Click "Show all related links"
-            print("\n🔗 Clicking 'Show all related links'...")
+            print("\nClicking 'Show all related links'...")
             await self._show_all_sources(page)
 
             # Step 10: Extract sources
-            print("\n📚 Extracting sources...")
+            print("\nExtracting sources...")
             sources = await self._extract_sources(page)
 
-            print(f"\n✅ Successfully extracted AI Mode response")
+            print(f"\nSuccessfully extracted AI Mode response")
             print(f"  - Text length: {len(ai_text)} characters")
             print(f"  - Sources found: {len(sources)}")
 
@@ -361,7 +374,7 @@ class GoogleAIModeScraper:
             )
 
         except Exception as e:
-            print(f"\n✗ Critical error: {e}")
+            print(f"\nCritical error: {e}")
             import traceback
             traceback.print_exc()
             return AIModeResult(
@@ -389,7 +402,7 @@ class GoogleAIModeScraper:
                 try:
                     ai_mode_link = page.locator(selector).first
                     if await ai_mode_link.is_visible(timeout=3000):
-                        print(f"  ✓ Found AI Mode link: {selector}")
+                        print(f"  Found AI Mode link: {selector}")
                         
                         # Click with human-like behavior
                         await ai_mode_link.scroll_into_view_if_needed(timeout=3000)
@@ -397,21 +410,21 @@ class GoogleAIModeScraper:
                         await ai_mode_link.click()
                         await self._random_wait(1.0, 2.0)
                         
-                        print("  ✓ AI Mode link clicked successfully")
+                        print("  AI Mode link clicked successfully")
                         return True
                 except:
                     continue
             
-            print("  ✗ AI Mode link not found")
+            print("  AI Mode link not found")
             return False
             
         except Exception as e:
-            print(f"  ✗ Error clicking AI Mode: {e}")
+            print(f"  Error clicking AI Mode: {e}")
             return False
 
     async def _wait_for_ai_mode_complete(self, page: Page):
         """Wait for AI Mode streaming to complete"""
-        print("  ⏳ Waiting for AI response to finish...")
+        print("  Waiting for AI response to finish...")
         
         # Strategy 1: Wait for loading indicators to disappear
         try:
@@ -426,7 +439,7 @@ class GoogleAIModeScraper:
                     loader = page.locator(indicator).first
                     if await loader.count() > 0:
                         await loader.wait_for(state="hidden", timeout=30000)
-                        print("    ✓ Loading indicator disappeared")
+                        print("    Loading indicator disappeared")
                 except:
                     pass
         except:
@@ -437,9 +450,9 @@ class GoogleAIModeScraper:
             # Wait for main containers to appear
             ai_containers = page.locator('div[data-subtree="aimfl"], div.Y3BBE, ul.KsbFXc')
             await ai_containers.first.wait_for(state="attached", timeout=15000)
-            print("    ✓ AI Mode container detected")
+            print("    AI Mode container detected")
         except Exception as e:
-            print(f"    ⚠ Container wait failed: {e}")
+            print(f"    Container wait failed: {e}")
 
         # Strategy 3: Wait for content stabilization
         try:
@@ -455,7 +468,7 @@ class GoogleAIModeScraper:
                     if current_text == previous_text:
                         stable_count += 1
                         if stable_count >= 2:  # Stable for 2 consecutive checks
-                            print("    ✓ Content appears stable")
+                            print("    Content appears stable")
                             break
                     else:
                         stable_count = 0
@@ -470,7 +483,7 @@ class GoogleAIModeScraper:
 
     async def _detect_ai_mode(self, page: Page) -> bool:
         """Detect if AI Mode response is present"""
-        print("  🔍 Detecting AI Mode content...")
+        print("  Detecting AI Mode content...")
         
         # Check for AI Mode specific indicators
         selectors = [
@@ -485,17 +498,17 @@ class GoogleAIModeScraper:
         for selector in selectors:
             try:
                 if await page.locator(selector).count() > 0:
-                    print(f"    ✓ Found AI Mode indicator: {selector}")
+                    print(f"    Found AI Mode indicator: {selector}")
                     return True
             except:
                 pass
         
-        print("    ✗ No AI Mode indicators found")
+        print("    No AI Mode indicators found")
         return False
 
     async def _expand_content(self, page: Page):
         """Expand all collapsible content"""
-        print("  📖 Expanding content...")
+        print("  Expanding content...")
         
         expand_buttons = [
             'button:has-text("Show more")',
@@ -514,7 +527,7 @@ class GoogleAIModeScraper:
                         if await btn.is_visible(timeout=1000):
                             await btn.click()
                             await self._random_wait(0.3, 0.5)
-                            print(f"    ✓ Clicked expand button {i+1}")
+                            print(f"    Clicked expand button {i+1}")
                     except:
                         pass
             except:
@@ -522,7 +535,7 @@ class GoogleAIModeScraper:
 
     async def _extract_ai_mode_text(self, page: Page) -> str:
         """Extract AI Mode response text using the specific HTML structure"""
-        print("  📝 Extracting structured text...")
+        print("  Extracting structured text...")
         
         try:
             # JavaScript extraction matching the HTML structure
@@ -611,22 +624,22 @@ class GoogleAIModeScraper:
             }""")
             
             ai_text = self._clean_text(ai_text)
-            print(f"    ✓ Extracted {len(ai_text)} characters")
+            print(f"    Extracted {len(ai_text)} characters")
             
             if len(ai_text) < 50:
-                print("    ⚠ Text seems too short, might be incomplete")
+                print("    Text seems too short, might be incomplete")
             
             return ai_text
             
         except Exception as e:
-            print(f"    ✗ Failed to extract text: {e}")
+            print(f"    Failed to extract text: {e}")
             import traceback
             traceback.print_exc()
             return ""
 
     async def _show_all_sources(self, page: Page):
         """Click 'Show all related links' button"""
-        print("  🔗 Looking for 'Show all related links' button...")
+        print("  Looking for 'Show all related links' button...")
         
         # Try multiple possible selectors
         selectors = [
@@ -641,32 +654,32 @@ class GoogleAIModeScraper:
             try:
                 btn = page.locator(selector).first
                 if await btn.is_visible(timeout=2000):
-                    print(f"    ✓ Found button: {selector}")
+                    print(f"    Found button: {selector}")
                     
                     await btn.scroll_into_view_if_needed(timeout=3000)
                     await self._random_wait(0.3, 0.5)
                     await btn.click()
                     await self._random_wait(1.0, 1.5)
                     
-                    print("    ✓ Button clicked successfully")
+                    print("    Button clicked successfully")
                     
                     # Wait for sources panel to appear
                     try:
                         sources_panel = page.locator('ul.bTFeG, div[data-type="hovc"]').first
                         await sources_panel.wait_for(state="visible", timeout=5000)
-                        print("    ✓ Sources panel appeared")
+                        print("    Sources panel appeared")
                     except:
-                        print("    ⚠ Sources panel not detected (might already be visible)")
+                        print("    Sources panel not detected (might already be visible)")
                     
                     return
             except:
                 continue
         
-        print("    ℹ No 'Show all' button found (sources might already be expanded)")
+        print("    No 'Show all' button found (sources might already be expanded)")
 
     async def _extract_sources(self, page: Page) -> List[SourceLink]:
         """Extract sources from ul.bTFeG > li.CyMdWb"""
-        print("  📚 Extracting sources from list...")
+        print("  Extracting sources from list...")
         
         sources = []
         
@@ -675,7 +688,7 @@ class GoogleAIModeScraper:
             sources_list = page.locator('ul.bTFeG').first
             
             if await sources_list.count() == 0:
-                print("    ⚠ Sources list (ul.bTFeG) not found")
+                print("    Sources list (ul.bTFeG) not found")
                 return sources
             
             # Get all source items (li.CyMdWb)
@@ -697,7 +710,7 @@ class GoogleAIModeScraper:
                         pass
                     
                     if not url:
-                        print(f"      ⚠ Item {idx+1}: No URL found, skipping")
+                        print(f"      Item {idx+1}: No URL found, skipping")
                         continue
                     
                     # Extract Title (div.Nn35F)
@@ -765,17 +778,17 @@ class GoogleAIModeScraper:
                     )
                     
                     sources.append(source)
-                    print(f"      ✓ Source {idx+1}: {title[:50]}... ({domain})")
+                    print(f"      Source {idx+1}: {title[:50]}... ({domain})")
                     
                 except Exception as e:
-                    print(f"      ✗ Source {idx+1} error: {str(e)[:60]}")
+                    print(f"      Source {idx+1} error: {str(e)[:60]}")
                     continue
             
-            print(f"\n    ✓ Successfully extracted {len(sources)} sources")
+            print(f"\n    Successfully extracted {len(sources)} sources")
             return sources
             
         except Exception as e:
-            print(f"    ✗ Failed to extract sources: {e}")
+            print(f"    Failed to extract sources: {e}")
             import traceback
             traceback.print_exc()
             return sources
@@ -792,7 +805,7 @@ class GoogleAIModeScraper:
 
     async def _handle_cookie_consent(self, page: Page):
         """Handle Google cookie consent popup"""
-        print("🍪 Checking for cookie consent...")
+        print("Checking for cookie consent...")
         try:
             consent_selectors = [
                 'button:has-text("Reject all")',
@@ -807,7 +820,7 @@ class GoogleAIModeScraper:
                     if await button.is_visible(timeout=2000):
                         await button.click()
                         await self._random_wait(0.3, 0.6)
-                        print("  ✓ Cookie consent handled")
+                        print("  Cookie consent handled")
                         return
                 except:
                     continue
@@ -823,42 +836,49 @@ class GoogleAIModeScraper:
             
             # Click and fill
             await search_box.click()
-            await self._random_wait(0.2, 0.3)
+            await self._random_wait(0.3, 0.5)
             await search_box.fill(query)
             await self._random_wait(0.3, 0.5)
             
-            # Look for AI Mode link immediately (before pressing Enter)
-            print("🔍 Looking for AI Mode link...")
-            ai_mode_selectors = [
-                'a:has-text("AI Mode")',
-                'a:has-text("AI")',
-                'span:has-text("AI Mode")',
-                'div:has-text("AI") a',
-                'button:has-text("AI Mode")',
-                '[aria-label*="AI"]'
-            ]
+            print("Looking for AI Mode link using get_by_role...")
             
-            for selector in ai_mode_selectors:
-                try:
-                    ai_mode_link = page.locator(selector).first
-                    if await ai_mode_link.is_visible(timeout=2000):
-                        print(f"  ✓ Found AI Mode link with selector: {selector}")
-                        
-                        # Scroll into view and click
-                        await ai_mode_link.scroll_into_view_if_needed(timeout=3000)
-                        await self._random_wait(0.2, 0.4)
-                        await ai_mode_link.click()
-                        await self._random_wait(1.0, 2.0)
-                        print("  ✓ AI Mode link clicked successfully")
-                        return True
-                except:
-                    continue
-            
-            print("  ❌ Could not find or click AI Mode link")
-            return False
+            try:
+                ai_mode_link = page.get_by_role("link", name="AI Mode")
+                
+                # Check if it's visible
+                if await ai_mode_link.is_visible(timeout=3000):
+                    # Get href to verify it's not workspace link
+                    href = await ai_mode_link.get_attribute('href')
+                    print(f"  Found AI Mode link with href: {href}")
+                    
+                    # Skip if it's Google Workspace link
+                    if href and ('workspace.google.com' in href or 'google.com/workspace' in href):
+                        print("  Skipping Google Workspace AI link (wrong one)")
+                        return False
+                    
+                    # Take debug screenshot before clicking
+                    await take_debug_screenshot(page, "ai_mode_found")
+                    
+                    # Scroll into view and click
+                    await ai_mode_link.scroll_into_view_if_needed(timeout=3000)
+                    await self._random_wait(0.2, 0.4)
+                    await ai_mode_link.click()
+                    await self._random_wait(1.0, 2.0)
+                    
+                    # Take debug screenshot after clicking
+                    await take_debug_screenshot(page, "ai_mode_clicked")
+                    
+                    print("  AI Mode link clicked successfully")
+                    return True
+                else:
+                    print("  AI Mode link not visible with get_by_role approach")
+                    return False
+            except Exception as e:
+                print(f"  Error with get_by_role approach: {e}")
+                return False
             
         except Exception as e:
-            print(f"  ✗ Error in simple search: {e}")
+            print(f"  Error in simple search: {e}")
             return False
 
     def _clean_text(self, text: str) -> str:
