@@ -319,12 +319,15 @@ class WorkerService:
             ]
             
             # Add proxy configuration if available
-            proxy_url = None
+            proxy_config = None
             if self.proxy_server and self.proxy_username and self.proxy_password:
-                proxy_url = f"http://{self.proxy_username}:{self.proxy_password}@{self.proxy_server}"
+                proxy_config = {
+                    "server": f"http://{self.proxy_server}",
+                    "username": self.proxy_username,
+                    "password": self.proxy_password
+                }
                 logger.info(f"🌐 Using proxy: {self.proxy_server}")
-            else:
-                proxy_url = None
+                logger.info(f"🌐 Using proxy config: {proxy_config}")
             
             # Launch browser with stealth
             context = await p.chromium.launch_persistent_context(
@@ -349,7 +352,7 @@ class WorkerService:
                     'Cache-Control': 'max-age=0'
                 },
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                proxy={"server": proxy_url} if proxy_url else None
+                proxy=proxy_config
             )
             
             page = await context.new_page()
