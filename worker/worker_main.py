@@ -34,10 +34,7 @@ logger = logging.getLogger(__name__)
 sys.path.append(str(Path(__file__).parent / "core"))
 from core.scraper_working import AIModeResult, SourceLink
 from core.profile_manager import ProfileManager
-
-# Import LOCATION_CONFIG and GoogleAIModeScraper from root scraper
-sys.path.append(str(Path(__file__).parent.parent))
-from scraper import LOCATION_CONFIG, GoogleAIModeScraper
+from core.scraper import LOCATION_CONFIG, GoogleAIModeScraper
 
 class WorkerService:
     """Main worker service that consumes jobs and executes scraping"""
