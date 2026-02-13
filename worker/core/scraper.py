@@ -458,180 +458,180 @@ class GoogleAIModeScraper:
     #         )
 
 
-
-    async def scrape(self, page: Page, query: str, location: str = "India", job_id: str = None) -> AIModeResult:
-        """
-        Hybrid Scraper Strategy:
-        1. Navigate to Homepage (sets cookies/trust)
-        2. Type and Search like a Human (establishes behavioral patterns)
-        3. Force AI Mode via URL parameter (bypasses UI variations/missing buttons)
-        """
-        timestamp = datetime.now().isoformat()
+    # # working one
+    # async def scrape(self, page: Page, query: str, location: str = "India", job_id: str = None) -> AIModeResult:
+    #     """
+    #     Hybrid Scraper Strategy:
+    #     1. Navigate to Homepage (sets cookies/trust)
+    #     2. Type and Search like a Human (establishes behavioral patterns)
+    #     3. Force AI Mode via URL parameter (bypasses UI variations/missing buttons)
+    #     """
+    #     timestamp = datetime.now().isoformat()
         
-        print(f"\n{'='*80}", flush=True)
-        print(f" Starting Hybrid Google Scraper", flush=True)
-        print(f"Query: {query}", flush=True)
-        print(f"Location: {location}", flush=True)
-        print(f"Job ID: {job_id}", flush=True)
-        print(f"{'='*80}\n", flush=True)
+    #     print(f"\n{'='*80}", flush=True)
+    #     print(f" Starting Hybrid Google Scraper", flush=True)
+    #     print(f"Query: {query}", flush=True)
+    #     print(f"Location: {location}", flush=True)
+    #     print(f"Job ID: {job_id}", flush=True)
+    #     print(f"{'='*80}\n", flush=True)
         
-        try:
-            # ==============================================================================
-            # STEP 1: ESTABLISH TRUST (Navigate to Homepage)
-            # ==============================================================================
-            print(" Navigating to Google Homepage...", flush=True)
-            await page.goto("https://www.google.com/", wait_until="domcontentloaded", timeout=60000)
-            await self._random_wait(1.0, 2.0)
+    #     try:
+    #         # ==============================================================================
+    #         # STEP 1: ESTABLISH TRUST (Navigate to Homepage)
+    #         # ==============================================================================
+    #         print(" Navigating to Google Homepage...", flush=True)
+    #         await page.goto("https://www.google.com/", wait_until="domcontentloaded", timeout=60000)
+    #         await self._random_wait(1.0, 2.0)
 
-            # Handle cookies immediately
-            await self._handle_cookie_consent(page)
+    #         # Handle cookies immediately
+    #         await self._handle_cookie_consent(page)
 
-            # ==============================================================================
-            # STEP 2: PERFORM HUMAN SEARCH
-            # ==============================================================================
-            print(" Performing human search...", flush=True)
-            try:
-                # Find search box (works for both desktop and mobile views)
-                search_box = page.locator('textarea[name="q"], input[name="q"]').first
-                await search_box.wait_for(state="visible", timeout=10000)
+    #         # ==============================================================================
+    #         # STEP 2: PERFORM HUMAN SEARCH
+    #         # ==============================================================================
+    #         print(" Performing human search...", flush=True)
+    #         try:
+    #             # Find search box (works for both desktop and mobile views)
+    #             search_box = page.locator('textarea[name="q"], input[name="q"]').first
+    #             await search_box.wait_for(state="visible", timeout=10000)
                 
-                # Click and Type
-                await search_box.click()
-                await self._random_wait(0.2, 0.5)
-                await search_box.type(query, delay=random.uniform(50, 120))  # Slower, human-like typing
-                await self._random_wait(0.5, 1.0)
+    #             # Click and Type
+    #             await search_box.click()
+    #             await self._random_wait(0.2, 0.5)
+    #             await search_box.type(query, delay=random.uniform(50, 120))  # Slower, human-like typing
+    #             await self._random_wait(0.5, 1.0)
                 
-                # Press Enter
-                await page.keyboard.press("Enter")
-                print("   Search submitted via keyboard", flush=True)
+    #             # Press Enter
+    #             await page.keyboard.press("Enter")
+    #             print("   Search submitted via keyboard", flush=True)
                 
-                # Wait for initial standard results to ensure session is registered
-                await page.wait_for_selector('#search, #rso', timeout=20000)
-                print("   Initial search results loaded", flush=True)
+    #             # Wait for initial standard results to ensure session is registered
+    #             await page.wait_for_selector('#search, #rso', timeout=20000)
+    #             print("   Initial search results loaded", flush=True)
                 
-            except Exception as e:
-                print(f"   Search interaction issue: {e}", flush=True)
-                # Fallback: If typing failed, try direct nav (less safe, but better than crashing)
-                encoded = quote_plus(query)
-                await page.goto(f"https://www.google.com/search?q={encoded}", wait_until="domcontentloaded")
+    #         except Exception as e:
+    #             print(f"   Search interaction issue: {e}", flush=True)
+    #             # Fallback: If typing failed, try direct nav (less safe, but better than crashing)
+    #             encoded = quote_plus(query)
+    #             await page.goto(f"https://www.google.com/search?q={encoded}", wait_until="domcontentloaded")
 
-            await self._random_wait(2.0, 4.0)
+    #         await self._random_wait(2.0, 4.0)
 
-            # ==============================================================================
-            # STEP 3: FORCE AI MODE (The "Trojan Horse")
-            # ==============================================================================
-            # Instead of looking for a button, we modify the URL of the *active trusted session*
-            current_url = page.url
+    #         # ==============================================================================
+    #         # STEP 3: FORCE AI MODE (The "Trojan Horse")
+    #         # ==============================================================================
+    #         # Instead of looking for a button, we modify the URL of the *active trusted session*
+    #         current_url = page.url
             
-            # Check if AI mode is already active (sometimes auto-triggers)
-            if "udm=50" in current_url:
-                print("   AI Mode already active in URL", flush=True)
-            else:
-                print(" Forcing AI Mode via URL parameter (maintaining trusted session)...", flush=True)
+    #         # Check if AI mode is already active (sometimes auto-triggers)
+    #         if "udm=50" in current_url:
+    #             print("   AI Mode already active in URL", flush=True)
+    #         else:
+    #             print(" Forcing AI Mode via URL parameter (maintaining trusted session)...", flush=True)
                 
-                # Construct new URL properly handling existing parameters
-                separator = "&" if "?" in current_url else "?"
-                new_url = f"{current_url}{separator}udm=50"
+    #             # Construct new URL properly handling existing parameters
+    #             separator = "&" if "?" in current_url else "?"
+    #             new_url = f"{current_url}{separator}udm=50"
                 
-                # Navigate to the forced AI view
-                await page.goto(new_url, wait_until="domcontentloaded")
-                await self._random_wait(2.0, 3.0)
+    #             # Navigate to the forced AI view
+    #             await page.goto(new_url, wait_until="domcontentloaded")
+    #             await self._random_wait(2.0, 3.0)
 
-            # ==============================================================================
-            # STEP 4: BOT DETECTION CHECK
-            # ==============================================================================
-            page_text = await page.locator("body").inner_text()
-            if self._is_bot_detected(page_text):
-                print(" Bot detection triggered!", flush=True)
-                await upload_screenshot_to_supabase(page, "99_bot_detection", job_id)
-                return AIModeResult(
-                    query=query,
-                    original_query=query,
-                    ai_mode_found=False,
-                    success=False,
-                    timestamp=timestamp,
-                    location=location,
-                    error_message="Bot detection / CAPTCHA encountered"
-                )
+    #         # ==============================================================================
+    #         # STEP 4: BOT DETECTION CHECK
+    #         # ==============================================================================
+    #         page_text = await page.locator("body").inner_text()
+    #         if self._is_bot_detected(page_text):
+    #             print(" Bot detection triggered!", flush=True)
+    #             await upload_screenshot_to_supabase(page, "99_bot_detection", job_id)
+    #             return AIModeResult(
+    #                 query=query,
+    #                 original_query=query,
+    #                 ai_mode_found=False,
+    #                 success=False,
+    #                 timestamp=timestamp,
+    #                 location=location,
+    #                 error_message="Bot detection / CAPTCHA encountered"
+    #             )
 
-            # ==============================================================================
-            # STEP 5: WAIT FOR & DETECT CONTENT
-            # ==============================================================================
-            print(" Waiting for AI content...", flush=True)
-            await self._wait_for_ai_mode_complete(page)
+    #         # ==============================================================================
+    #         # STEP 5: WAIT FOR & DETECT CONTENT
+    #         # ==============================================================================
+    #         print(" Waiting for AI content...", flush=True)
+    #         await self._wait_for_ai_mode_complete(page)
 
-            # Verify AI content presence
-            ai_mode_present = await self._detect_ai_mode(page)
-            if not ai_mode_present:
-                print(" AI Mode content still not found after forcing", flush=True)
-                await upload_screenshot_to_supabase(page, "97_ai_content_missing", job_id)
-                return AIModeResult(
-                    query=query,
-                    original_query=query,
-                    ai_mode_found=False,
-                    success=False,
-                    timestamp=timestamp,
-                    location=location,
-                    error_message="No AI Mode content detected"
-                )
+    #         # Verify AI content presence
+    #         ai_mode_present = await self._detect_ai_mode(page)
+    #         if not ai_mode_present:
+    #             print(" AI Mode content still not found after forcing", flush=True)
+    #             await upload_screenshot_to_supabase(page, "97_ai_content_missing", job_id)
+    #             return AIModeResult(
+    #                 query=query,
+    #                 original_query=query,
+    #                 ai_mode_found=False,
+    #                 success=False,
+    #                 timestamp=timestamp,
+    #                 location=location,
+    #                 error_message="No AI Mode content detected"
+    #             )
 
-            # ==============================================================================
-            # STEP 6: EXTRACT DATA
-            # ==============================================================================
-            # Expand "Show more" buttons
-            await self._expand_content(page)
+    #         # ==============================================================================
+    #         # STEP 6: EXTRACT DATA
+    #         # ==============================================================================
+    #         # Expand "Show more" buttons
+    #         await self._expand_content(page)
 
-            # Extract Text
-            print("\n Extracting AI Mode text...", flush=True)
-            ai_text = await self._extract_ai_mode_text(page)
+    #         # Extract Text
+    #         print("\n Extracting AI Mode text...", flush=True)
+    #         ai_text = await self._extract_ai_mode_text(page)
             
-            if not ai_text:
-                print(" Could not extract AI Mode text", flush=True)
-                return AIModeResult(
-                    query=query,
-                    original_query=query,
-                    ai_mode_found=False,
-                    success=False,
-                    timestamp=timestamp,
-                    location=location,
-                    error_message="Could not extract AI Mode text content"
-                )
+    #         if not ai_text:
+    #             print(" Could not extract AI Mode text", flush=True)
+    #             return AIModeResult(
+    #                 query=query,
+    #                 original_query=query,
+    #                 ai_mode_found=False,
+    #                 success=False,
+    #                 timestamp=timestamp,
+    #                 location=location,
+    #                 error_message="Could not extract AI Mode text content"
+    #             )
 
-            # Extract Sources
-            print("\n Clicking 'Show all related links'...", flush=True)
-            await self._show_all_sources(page)
+    #         # Extract Sources
+    #         print("\n Clicking 'Show all related links'...", flush=True)
+    #         await self._show_all_sources(page)
 
-            print("\n Extracting sources...", flush=True)
-            sources = await self._extract_sources(page)
+    #         print("\n Extracting sources...", flush=True)
+    #         sources = await self._extract_sources(page)
 
-            print(f"\n Successfully extracted AI Mode response", flush=True)
-            print(f"  - Text length: {len(ai_text)} characters")
-            print(f"  - Sources found: {len(sources)}")
+    #         print(f"\n Successfully extracted AI Mode response", flush=True)
+    #         print(f"  - Text length: {len(ai_text)} characters")
+    #         print(f"  - Sources found: {len(sources)}")
 
-            return AIModeResult(
-                query=query,
-                original_query=query,
-                ai_mode_found=True,
-                ai_mode_text=ai_text,
-                source_links=sources,
-                success=True,
-                timestamp=timestamp,
-                location=location
-            )
+    #         return AIModeResult(
+    #             query=query,
+    #             original_query=query,
+    #             ai_mode_found=True,
+    #             ai_mode_text=ai_text,
+    #             source_links=sources,
+    #             success=True,
+    #             timestamp=timestamp,
+    #             location=location
+    #         )
 
-        except Exception as e:
-            print(f"\n Critical error: {e}", flush=True)
-            import traceback
-            traceback.print_exc()
-            return AIModeResult(
-                query=query,
-                original_query=query,
-                ai_mode_found=False,
-                success=False,
-                timestamp=timestamp,
-                location=location,
-                error_message=str(e)
-            )
+    #     except Exception as e:
+    #         print(f"\n Critical error: {e}", flush=True)
+    #         import traceback
+    #         traceback.print_exc()
+    #         return AIModeResult(
+    #             query=query,
+    #             original_query=query,
+    #             ai_mode_found=False,
+    #             success=False,
+    #             timestamp=timestamp,
+    #             location=location,
+    #             error_message=str(e)
+    #         )
 
     async def _click_ai_mode_link(self, page: Page) -> bool:
         """Click the 'AI Mode' link on search results"""
@@ -643,30 +643,185 @@ class GoogleAIModeScraper:
                 'a[aria-label*="AI Mode"]',
                 'div:has-text("AI Mode")',
             ]
-            
+
             for selector in selectors:
                 try:
                     ai_mode_link = page.locator(selector).first
                     if await ai_mode_link.is_visible(timeout=3000):
                         print(f"  Found AI Mode link: {selector}")
-                        
+
                         # Click with human-like behavior
                         await ai_mode_link.scroll_into_view_if_needed(timeout=3000)
                         await self._random_wait(0.2, 0.4)
                         await ai_mode_link.click()
                         await self._random_wait(1.0, 2.0)
-                        
+
                         print("  AI Mode link clicked successfully")
                         return True
                 except:
                     continue
-            
+
             print("  AI Mode link not found")
             return False
-            
+
         except Exception as e:
             print(f"  Error clicking AI Mode: {e}")
             return False
+
+
+    async def scrape(self, page: Page, query: str, location: str = "India", job_id: str = None) -> AIModeResult:
+        """
+        Robust Hybrid Strategy with Fallback:
+        1.  **Natural Search:** Go to Home -> Type Query -> Enter.
+        2.  **Attempt 1 (UI Interaction):** Try to click "AI Mode" button naturally.
+        3.  **Attempt 2 (URL Injection):** If button missing, force `&udm=50` on the *existing* trusted session.
+        """
+        timestamp = datetime.now().isoformat()
+        
+        print(f"\n{'='*80}", flush=True)
+        print(f"🤖 Starting Robust Google Scraper", flush=True)
+        print(f"Query: {query}", flush=True)
+        print(f"Job ID: {job_id}", flush=True)
+        print(f"{'='*80}\n", flush=True)
+        
+        try:
+            # ==============================================================================
+            # PHASE 1: ESTABLISH TRUST & PERFORM NATURAL SEARCH
+            # ==============================================================================
+            print("🌐 1. Navigating to Homepage...", flush=True)
+            await page.goto("https://www.google.com/", wait_until="domcontentloaded", timeout=60000)
+            await self._random_wait(1.0, 2.0)
+            await self._handle_cookie_consent(page)
+
+            print("🔍 2. Performing Human Search...", flush=True)
+            try:
+                # Find search box
+                search_box = page.locator('textarea[name="q"], input[name="q"]').first
+                await search_box.wait_for(state="visible", timeout=10000)
+                
+                # Type query naturally
+                await search_box.click()
+                await self._random_wait(0.2, 0.5)
+                await search_box.type(query, delay=random.uniform(40, 100)) 
+                await self._random_wait(0.3, 0.8)
+                
+                # Press Enter
+                await page.keyboard.press("Enter")
+                print("   Query submitted via keyboard", flush=True)
+                
+                # Wait for *any* results to load (establishing the session)
+                await page.wait_for_selector('#search, #rso', timeout=15000)
+                print("   Initial search results page loaded", flush=True)
+                
+            except Exception as e:
+                print(f"   ⚠️ Natural search failed ({e}), falling back to direct navigation...", flush=True)
+                encoded = quote_plus(query)
+                await page.goto(f"https://www.google.com/search?q={encoded}", wait_until="domcontentloaded")
+
+            await self._random_wait(2.0, 3.0)
+
+            # ==============================================================================
+            # PHASE 2: ATTEMPT NATURAL "AI MODE" CLICK
+            # ==============================================================================
+            ai_content_found = False
+            
+            # NOTE: Auto-detection of "AI Overview" removed as requested. 
+            # We strictly want to find the AI Mode tab/button or force it.
+
+            print("🖱️ 3. Attempting to find 'AI Mode' button...", flush=True)
+            button_clicked = await self._click_ai_mode_link(page)
+            
+            if button_clicked:
+                print("   Button clicked, waiting for content...", flush=True)
+                await self._wait_for_ai_mode_complete(page)
+                # Verify if clicking actually worked
+                if await self._detect_ai_mode(page):
+                    print("✨ AI Content loaded via button click!", flush=True)
+                    ai_content_found = True
+                else:
+                    print("   Button clicked but no AI content detected. Moving to fallback...", flush=True)
+            else:
+                print("   Button not found. Moving to fallback...", flush=True)
+
+            # ==============================================================================
+            # PHASE 3: FALLBACK TO URL INJECTION (Triggered if Phase 2 Failed)
+            # ==============================================================================
+            if not ai_content_found:
+                print("\n⚡ 4. Fallback: Forcing AI Mode via URL Parameter...", flush=True)
+                current_url = page.url
+                
+                # Avoid double-injecting if we are already there
+                if "udm=50" not in current_url:
+                    separator = "&" if "?" in current_url else "?"
+                    new_url = f"{current_url}{separator}udm=50"
+                    
+                    # Navigate keeping current session cookies
+                    await page.goto(new_url, wait_until="domcontentloaded")
+                    await self._random_wait(2.0, 4.0)
+                    await self._wait_for_ai_mode_complete(page)
+                else:
+                    print("   Already on udm=50 URL, just waiting...", flush=True)
+                    await self._wait_for_ai_mode_complete(page)
+
+            # ==============================================================================
+            # PHASE 4: BOT DETECTION & EXTRACTION
+            # ==============================================================================
+            
+            # Check for Bot Detection (CAPTCHA)
+            page_text = await page.locator("body").inner_text()
+            if self._is_bot_detected(page_text):
+                print("⚠️ Bot detection triggered!", flush=True)
+                await upload_screenshot_to_supabase(page, "99_bot_detection", job_id)
+                return AIModeResult(
+                    query=query, original_query=query, ai_mode_found=False, success=False,
+                    timestamp=timestamp, location=location,
+                    error_message="Bot detection / CAPTCHA encountered"
+                )
+
+            # Check for Content presence
+            ai_mode_present = await self._detect_ai_mode(page)
+            if not ai_mode_present:
+                print("❌ AI Mode content still not found after all attempts", flush=True)
+                await upload_screenshot_to_supabase(page, "97_ai_content_missing", job_id)
+                return AIModeResult(
+                    query=query, original_query=query, ai_mode_found=False, success=False,
+                    timestamp=timestamp, location=location,
+                    error_message="No AI Mode content detected"
+                )
+
+            # Extract Data
+            await self._expand_content(page)
+
+            print("\n📝 Extracting Text...", flush=True)
+            ai_text = await self._extract_ai_mode_text(page)
+            
+            if not ai_text:
+                return AIModeResult(
+                    query=query, original_query=query, ai_mode_found=False, success=False,
+                    timestamp=timestamp, location=location,
+                    error_message="Could not extract text content"
+                )
+
+            print("\n🔗 Extracting Sources...", flush=True)
+            await self._show_all_sources(page)
+            sources = await self._extract_sources(page)
+
+            print(f"\n✅ SUCCESS: {len(ai_text)} chars, {len(sources)} sources")
+
+            return AIModeResult(
+                query=query, original_query=query,
+                ai_mode_found=True, ai_mode_text=ai_text, source_links=sources,
+                success=True, timestamp=timestamp, location=location
+            )
+
+        except Exception as e:
+            print(f"\n❌ Critical error: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            return AIModeResult(
+                query=query, original_query=query, ai_mode_found=False, success=False,
+                timestamp=timestamp, location=location, error_message=str(e)
+            )
 
     async def _wait_for_ai_mode_complete(self, page: Page):
         """Wait for AI Mode streaming to complete"""
@@ -727,20 +882,46 @@ class GoogleAIModeScraper:
         # Final safety wait
         await self._random_wait(1.5, 2.5)
 
+    # async def _detect_ai_mode(self, page: Page) -> bool:
+    #     """Detect if AI Mode response is present"""
+    #     print("  Detecting AI Mode content...")
+        
+    #     # Check for AI Mode specific indicators
+    #     selectors = [
+    #         'div[data-subtree="aimfl"]',  # Intro text
+    #         'div.Y3BBE',                   # Main container
+    #         'div.otQkpb',                  # Section headings
+    #         'ul.KsbFXc',                   # Lists
+    #         'ul.bTFeG',                    # Sources list
+    #         'table.NRefec',                # Tables,
+    #     ]
+        
+    #     for selector in selectors:
+    #         try:
+    #             if await page.locator(selector).count() > 0:
+    #                 print(f"    Found AI Mode indicator: {selector}")
+    #                 return True
+    #         except:
+    #             pass
+        
+    #     print("    No AI Mode indicators found")
+    #     return False
+
+
     async def _detect_ai_mode(self, page: Page) -> bool:
         """Detect if AI Mode response is present"""
         print("  Detecting AI Mode content...")
-        
-        # Check for AI Mode specific indicators
+
+        # Check for AI Mode specific indicators (these are for CONTENT, not button)
         selectors = [
             'div[data-subtree="aimfl"]',  # Intro text
             'div.Y3BBE',                   # Main container
             'div.otQkpb',                  # Section headings
             'ul.KsbFXc',                   # Lists
             'ul.bTFeG',                    # Sources list
-            'table.NRefec',                # Tables,
+            'table.NRefec',                # Tables
         ]
-        
+
         for selector in selectors:
             try:
                 if await page.locator(selector).count() > 0:
@@ -748,7 +929,7 @@ class GoogleAIModeScraper:
                     return True
             except:
                 pass
-        
+
         print("    No AI Mode indicators found")
         return False
 
