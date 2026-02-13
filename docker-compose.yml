@@ -80,6 +80,7 @@ services:
       CALLBACK_API_URL: ${CALLBACK_API_URL}
       CALLBACK_TIMEOUT: ${CALLBACK_TIMEOUT:-30}
       DEBUG: ${DEBUG:-false}
+      SCREENSHOT: ${SCREENSHOT:-true}
     depends_on:
       rabbitmq:
         condition: service_healthy

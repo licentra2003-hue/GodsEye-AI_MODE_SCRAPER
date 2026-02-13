@@ -1,5 +1,5 @@
 """
-Google AI Mode Scraper Core Logic
+Google AI Mode Scraper Core Logic - worker\core\scraper.py
 Extracted from main.py for microservices architecture
 """
 
@@ -11,16 +11,76 @@ import random
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, quote_plus
 import re
+import base64
+import io
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page, Error
 from playwright.async_api import TimeoutError as PlaywrightTimeout
 from pydantic import BaseModel, ConfigDict, Field
+from supabase import create_client, Client
 
 load_dotenv()
+
+# ==================== SUPABASE STORAGE FOR SCREENSHOTS ====================
+
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_KEY")
+supabase_client = None
+
+if supabase_url and supabase_key:
+    supabase_client = create_client(supabase_url, supabase_key)
+
+async def upload_screenshot_to_supabase(page: Page, name: str, job_id: str = None):
+    """Take screenshot and upload to Supabase storage"""
+    screenshot_enabled = os.getenv("SCREENSHOT", "false").lower() in ("true", "1", "yes")
+    print(f"  🔍 DEBUG: SCREENSHOT env var = {os.getenv('SCREENSHOT', 'NOT SET')}")
+    print(f"  🔍 DEBUG: screenshot_enabled = {screenshot_enabled}")
+    
+    if not screenshot_enabled:
+        print(f"  ⚠️ Screenshots disabled, skipping upload")
+        return None
+    
+    if not supabase_client:
+        print(f"  ⚠️ Supabase client not configured, skipping screenshot upload")
+        return None
+    
+    try:
+        print(f"  📸 Taking screenshot: {name}")
+        # Take screenshot as bytes
+        screenshot_bytes = await page.screenshot(full_page=False)
+        
+        # Create filename with timestamp and job_id
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        job_prefix = f"{job_id}_" if job_id else ""
+        filename = f"{job_prefix}{name}_{timestamp}.png"
+        
+        # Upload to Supabase storage
+        bucket_name = "debug_screenshots"
+        storage_path = f"{filename}"
+        
+        print(f"  📤 Uploading to bucket: {bucket_name}")
+        print(f"  📤 File path: {storage_path}")
+        
+        # Upload to Supabase using bytes directly
+        supabase_client.storage.from_(bucket_name).upload(
+            path=storage_path,
+            file=screenshot_bytes
+        )
+        
+        # Get public URL
+        public_url = f"{supabase_url}/storage/v1/object/public/{bucket_name}/{storage_path}"
+        print(f"  ✅ Screenshot uploaded: {name} -> {public_url}")
+        return public_url
+        
+    except Exception as e:
+        print(f"  ❌ Failed to upload screenshot '{name}': {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 # ==================== DEBUG SCREENSHOT FUNCTION ====================
 
@@ -265,19 +325,23 @@ class GoogleAIModeScraper:
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         ]
 
-    async def scrape(self, page: Page, query: str, location: str = "India") -> AIModeResult:
+    async def scrape(self, page: Page, query: str, location: str = "India", job_id: str = None) -> AIModeResult:
         timestamp = datetime.now().isoformat()
         
         print(f"\n{'='*80}")
         print(f"Starting Google AI Mode Scraper")
         print(f"Query: {query}")
         print(f"Location: {location}")
+        print(f"Job ID: {job_id}")
         print(f"{'='*80}\n")
-
+        
+        # Properly encode the query for URL
+        encoded_query = quote_plus(query)
+        
         try:
-            # Step 1: Navigate to Google
-            print("Navigating to Google...")
-            await page.goto("https://www.google.com/", wait_until="domcontentloaded", timeout=60000)
+            # Step 1: Navigate to Google AI Mode directly with query
+            print("Navigating to Google AI Mode with query...")
+            await page.goto(f"https://www.google.com/search?udm=50&sei=&q={encoded_query}", wait_until="domcontentloaded", timeout=60000)
             await self._random_wait(0.5, 1.0)
 
             # Step 2: Handle cookie consent
@@ -285,19 +349,21 @@ class GoogleAIModeScraper:
 
             # Step 3: Perform search and click AI Mode directly
             print(f"Searching for: '{query}'")
-            ai_mode_clicked = await self._simple_search(page, query)
+            # ai_mode_clicked = await self._simple_search(page, query, job_id)
             
-            if not ai_mode_clicked:
-                print("Could not find or click AI Mode link")
-                return AIModeResult(
-                    query=query,
-                    original_query=query,
-                    ai_mode_found=False,
-                    success=False,
-                    timestamp=timestamp,
-                    location=location,
-                    error_message="AI Mode link not found on search results"
-                )
+            # if not ai_mode_clicked:
+            #     print("Could not find or click AI Mode link")
+            #     # Screenshot when AI Mode link not found
+            #     await upload_screenshot_to_supabase(page, "98_ai_mode_not_found", job_id)
+            #     return AIModeResult(
+            #         query=query,
+            #         original_query=query,
+            #         ai_mode_found=False,
+            #         success=False,
+            #         timestamp=timestamp,
+            #         location=location,
+            #         error_message="AI Mode link not found on search results"
+            #     )
 
             # Step 5: Wait for AI Mode to load and complete
             print("\nWaiting for AI Mode response to complete...")
@@ -307,6 +373,8 @@ class GoogleAIModeScraper:
             page_text = await page.locator("body").inner_text()
             if self._is_bot_detected(page_text):
                 print("Bot detection triggered!")
+                # Screenshot when bot detection occurs
+                await upload_screenshot_to_supabase(page, "99_bot_detection", job_id)
                 return AIModeResult(
                     query=query,
                     original_query=query,
@@ -321,6 +389,8 @@ class GoogleAIModeScraper:
             ai_mode_present = await self._detect_ai_mode(page)
             if not ai_mode_present:
                 print("No AI Mode content found")
+                # Screenshot when AI Mode content not detected
+                await upload_screenshot_to_supabase(page, "97_ai_mode_content_not_found", job_id)
                 return AIModeResult(
                     query=query,
                     original_query=query,
@@ -827,12 +897,83 @@ class GoogleAIModeScraper:
         except:
             pass
 
-    async def _simple_search(self, page: Page, query: str):
+    # async def _simple_search(self, page: Page, query: str, job_id: str = None):
+    #     """Simple search using AI Mode directly"""
+    #     try:
+    #         # Screenshot: Page load
+    #         await upload_screenshot_to_supabase(page, "01_page_load", job_id)
+            
+    #         # Find search box
+    #         search_box = page.locator('textarea[name="q"], input[name="q"]').first
+    #         await search_box.wait_for(state="visible", timeout=20000)
+            
+    #         # Screenshot: Before typing
+    #         await upload_screenshot_to_supabase(page, "02_before_typing", job_id)
+            
+    #         # Click and type like human
+    #         await search_box.click()
+    #         await self._random_wait(0.3, 0.5)
+    #         await search_box.type(query, delay=random.uniform(30, 80))
+    #         await self._random_wait(0.3, 0.5)
+            
+    #         # Screenshot: After typing
+    #         await upload_screenshot_to_supabase(page, "03_after_typing", job_id)
+            
+    #         print("Looking for AI Mode link using get_by_role...")
+            
+    #         try:
+    #             ai_mode_link = page.get_by_role("link", name="AI Mode")
+                
+    #             # Check if it's visible
+    #             if await ai_mode_link.is_visible(timeout=3000):
+    #                 # Get href to verify it's not workspace link
+    #                 href = await ai_mode_link.get_attribute('href')
+    #                 print(f"  Found AI Mode link with href: {href}")
+                    
+    #                 # Skip if it's Google Workspace link
+    #                 if href and ('workspace.google.com' in href or 'google.com/workspace' in href):
+    #                     print("  Skipping Google Workspace AI link (wrong one)")
+    #                     return False
+                    
+    #                 # Screenshot before clicking AI Mode
+    #                 await upload_screenshot_to_supabase(page, "04_ai_mode_found", job_id)
+                    
+    #                 # Scroll into view and click
+    #                 await ai_mode_link.scroll_into_view_if_needed(timeout=3000)
+    #                 await self._random_wait(0.2, 0.4)
+    #                 await ai_mode_link.click()
+    #                 await self._random_wait(1.0, 2.0)
+                    
+    #                 # Screenshot after clicking AI Mode
+    #                 await upload_screenshot_to_supabase(page, "05_ai_mode_clicked", job_id)
+                    
+    #                 print("  AI Mode link clicked successfully")
+    #                 return True
+    #             else:
+    #                 print("  AI Mode link not visible with get_by_role approach")
+    #                 return False
+    #         except Exception as e:
+    #             print(f"  Error with get_by_role approach: {e}")
+    #             return False
+            
+    #     except Exception as e:
+    #         print(f"  Error in simple search: {e}")
+    #         return False
+
+    async def _simple_search(self, page: Page, query: str, job_id: str = None):
         """Simple search using AI Mode directly"""
+        print("  DEBUG: _simple_search called", flush=True)
         try:
-            # Find search box
-            search_box = page.locator('textarea[name="q"], input[name="q"]').first
+            # Screenshot: Page load
+            print("  DEBUG: Taking page load screenshot", flush=True)
+            await upload_screenshot_to_supabase(page, "01_page_load", job_id)
+            
+            # Find AI Mode search box
+            search_box = page.get_by_role("textbox", name="Ask anything")
             await search_box.wait_for(state="visible", timeout=20000)
+            
+            # Screenshot: Before typing
+            await upload_screenshot_to_supabase(page, "02_before_typing", job_id)
             
             # Click and type like human
             await search_box.click()
@@ -840,42 +981,69 @@ class GoogleAIModeScraper:
             await search_box.type(query, delay=random.uniform(30, 80))
             await self._random_wait(0.3, 0.5)
             
-            print("Looking for AI Mode link using get_by_role...")
+            # Screenshot: After typing
+            await upload_screenshot_to_supabase(page, "03_after_typing", job_id)
+            print("  DEBUG: About to look for Send button", flush=True)
             
+            # Try to click Send button, otherwise press Enter
+            send_clicked = False
+            print("  Looking for Send button...", flush=True)
             try:
-                ai_mode_link = page.get_by_role("link", name="AI Mode")
-                
-                # Check if it's visible
-                if await ai_mode_link.is_visible(timeout=3000):
-                    # Get href to verify it's not workspace link
-                    href = await ai_mode_link.get_attribute('href')
-                    print(f"  Found AI Mode link with href: {href}")
-                    
-                    # Skip if it's Google Workspace link
-                    if href and ('workspace.google.com' in href or 'google.com/workspace' in href):
-                        print("  Skipping Google Workspace AI link (wrong one)")
-                        return False
-                    
-                    # Take debug screenshot before clicking
-                    await take_debug_screenshot(page, "ai_mode_found")
-                    
-                    # Scroll into view and click
-                    await ai_mode_link.scroll_into_view_if_needed(timeout=3000)
-                    await self._random_wait(0.2, 0.4)
-                    await ai_mode_link.click()
+                send_button = page.get_by_role("button", name="Send")
+                print(f"  Send button locator created", flush=True)
+                if await send_button.is_visible(timeout=2000):
+                    print("  Send button is visible, clicking...", flush=True)
+                    await send_button.click()
                     await self._random_wait(1.0, 2.0)
-                    
-                    # Take debug screenshot after clicking
-                    await take_debug_screenshot(page, "ai_mode_clicked")
-                    
-                    print("  AI Mode link clicked successfully")
-                    return True
+                    print("Send button clicked successfully", flush=True)
+                    send_clicked = True
                 else:
-                    print("  AI Mode link not visible with get_by_role approach")
-                    return False
+                    print("  Send button not visible", flush=True)
             except Exception as e:
-                print(f"  Error with get_by_role approach: {e}")
-                return False
+                print(f"  Send button click failed: {e}", flush=True)
+            
+            if not send_clicked:
+                print("  Send button not found, pressing Enter instead", flush=True)
+                # Try multiple methods to submit the form
+                try:
+                    # Method 1: Press Enter on search box
+                    await search_box.click()
+                    await self._random_wait(0.2, 0.3)
+                    print("  Pressing Enter key...", flush=True)
+                    await search_box.press("Enter")
+                    await self._random_wait(1.0, 2.0)
+                    print("  Enter key pressed", flush=True)
+                except Exception as e:
+                    print(f"  Enter key failed: {e}", flush=True)
+                    # Method 2: Press Enter on page keyboard
+                    try:
+                        print("  Trying page keyboard Enter...", flush=True)
+                        await page.keyboard.press("Enter")
+                        await self._random_wait(1.0, 2.0)
+                        print("  Page keyboard Enter pressed", flush=True)
+                    except Exception as e2:
+                        print(f"  Page keyboard Enter failed: {e2}", flush=True)
+                        # Method 3: Submit form directly
+                        try:
+                            print("  Trying form submit...", flush=True)
+                            await page.evaluate("document.querySelector('textarea[name=\"q\"], input[name=\"q\"]').form.submit()")
+                            await self._random_wait(1.0, 2.0)
+                            print("  Form submitted", flush=True)
+                        except Exception as e3:
+                            print(f"  Form submit failed: {e3}", flush=True)
+            
+            # Screenshot: After clicking Send/Enter
+            await upload_screenshot_to_supabase(page, "04_send_clicked", job_id)
+            
+            # Wait for AI response to load
+            print("Waiting for AI response...")
+            await self._random_wait(3.0, 5.0)
+            
+            # Screenshot: AI response loaded
+            await upload_screenshot_to_supabase(page, "05_ai_response_loaded", job_id)
+            
+            print("AI Mode interaction completed successfully")
+            return True
             
         except Exception as e:
             print(f"  Error in simple search: {e}")

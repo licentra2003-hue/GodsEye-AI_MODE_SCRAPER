@@ -1,5 +1,5 @@
 """
-Updated worker that uses the working scraper approach
+Updated worker that uses the working scraper approach - worker\worker_main.py
 """
 import asyncio
 import json
@@ -292,6 +292,155 @@ class WorkerService:
             except:
                 pass
     
+    # async def _execute_scrape(self, job_id: str, query: str, location: str, profile_path: str) -> AIModeResult:
+    #     """Execute scraping using the working scraper approach"""
+    #     # Get location settings
+    #     if location not in LOCATION_CONFIG:
+    #         raise ValueError(f"Invalid location: {location}")
+        
+    #     location_settings = LOCATION_CONFIG[location]
+        
+    #     # Use stealth wrapper
+    #     async with async_playwright() as p:
+    #         # Browser launch arguments
+    #         launch_args = [
+    #             '--disable-blink-features=AutomationControlled',
+    #             '--no-sandbox',
+    #             '--disable-setuid-sandbox',
+    #             '--disable-dev-shm-usage',
+    #             '--disable-infobars', 
+    #             '--disable-notifications',
+    #             '--start-maximized',
+    #             '--disable-gpu', 
+    #             '--window-size=1920,1080',
+    #         ]
+            
+    #         # Add proxy configuration if available
+    #         proxy_config = None
+    #         if self.proxy_server and self.proxy_username and self.proxy_password:
+    #             proxy_config = {
+    #                 "server": f"http://{self.proxy_server}",
+    #                 "username": self.proxy_username,
+    #                 "password": self.proxy_password
+    #             }
+    #             logger.info(f"🌐 Using proxy: {self.proxy_server}")
+    #             logger.info(f"🌐 Using proxy config: {proxy_config}")
+            
+    #         # Launch browser with stealth
+    #         context = await p.chromium.launch_persistent_context(
+    #             user_data_dir=profile_path,
+    #             headless=os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes"),
+    #             args=launch_args,
+    #             ignore_default_args=['--enable-automation'],
+    #             locale=location_settings['locale'],
+    #             timezone_id=location_settings['timezone_id'],
+    #             geolocation=location_settings['geolocation'],
+    #             permissions=location_settings['permissions'],
+    #             extra_http_headers={
+    #                 **location_settings['extra_http_headers'],
+    #                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    #                 'Accept-Encoding': 'gzip, deflate, br',
+    #                 'DNT': '1',
+    #                 'Connection': 'keep-alive',
+    #                 'Upgrade-Insecure-Requests': '1',
+    #                 'Sec-Fetch-Dest': 'document',
+    #                 'Sec-Fetch-Mode': 'navigate',
+    #                 'Sec-Fetch-Site': 'none',
+    #                 'Cache-Control': 'max-age=0'
+    #             },
+    #             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    #             proxy=proxy_config
+    #         )
+            
+    #         page = await context.new_page()
+            
+    #         try:
+    #             # Execute scrape using working scraper
+    #             result = await self.scraper.scrape(page, query, location, job_id)
+    #             return result
+    #         finally:
+    #             await context.close()
+
+
+    # async def _execute_scrape(self, job_id: str, query: str, location: str, profile_path: str) -> AIModeResult:
+    #     """Execute scraping using the working scraper approach"""
+    #     # Get location settings
+    #     if location not in LOCATION_CONFIG:
+    #         raise ValueError(f"Invalid location: {location}")
+        
+    #     location_settings = LOCATION_CONFIG[location]
+        
+    #     # Use stealth wrapper
+    #     async with async_playwright() as p:
+    #         # Browser launch arguments
+    #         launch_args = [
+    #             '--disable-blink-features=AutomationControlled',
+    #             '--no-sandbox',
+    #             '--disable-setuid-sandbox',
+    #             '--disable-dev-shm-usage',
+    #             '--disable-infobars', 
+    #             '--disable-notifications',
+    #             '--start-maximized',
+    #             '--window-size=1920,1080',
+    #             # REMOVED '--disable-gpu' so your NVIDIA spoofing script actually works!
+    #         ]
+
+    #         # CHECK HEADLESS ENV VAR
+    #         is_headless = os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes")
+            
+    #         # USE CHROME'S NEW HEADLESS MODE
+    #         if is_headless:
+    #             launch_args.append('--headless=new')
+            
+    #         # Add proxy configuration if available
+    #         proxy_config = None
+    #         if self.proxy_server and self.proxy_username and self.proxy_password:
+    #             proxy_config = {
+    #                 "server": f"http://{self.proxy_server}",
+    #                 "username": self.proxy_username,
+    #                 "password": self.proxy_password
+    #             }
+    #             logger.info(f"🌐 Using proxy: {self.proxy_server}")
+            
+    #         # Launch browser with stealth
+    #         context = await p.chromium.launch_persistent_context(
+    #             user_data_dir=profile_path,
+    #             # KEY FIX: Force Playwright headless to False, rely on args for headless mode
+    #             headless=False, 
+    #             args=launch_args,
+    #             ignore_default_args=['--enable-automation'],
+    #             locale=location_settings['locale'],
+    #             timezone_id=location_settings['timezone_id'],
+    #             geolocation=location_settings['geolocation'],
+    #             permissions=location_settings['permissions'],
+    #             # KEY FIX: Prevent viewport mismatch (1920x1080 window vs 800x600 viewport)
+    #             no_viewport=True,
+    #             extra_http_headers={
+    #                 **location_settings['extra_http_headers'],
+    #                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    #                 'Accept-Encoding': 'gzip, deflate, br',
+    #                 'DNT': '1',
+    #                 'Connection': 'keep-alive',
+    #                 'Upgrade-Insecure-Requests': '1',
+    #                 'Sec-Fetch-Dest': 'document',
+    #                 'Sec-Fetch-Mode': 'navigate',
+    #                 'Sec-Fetch-Site': 'none',
+    #                 'Cache-Control': 'max-age=0'
+    #             },
+    #             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    #             proxy=proxy_config
+    #         )
+            
+    #         page = await context.new_page()
+            
+    #         try:
+    #             # Execute scrape using working scraper
+    #             result = await self.scraper.scrape(page, query, location, job_id)
+    #             return result
+    #         finally:
+    #             await context.close()
+
+
     async def _execute_scrape(self, job_id: str, query: str, location: str, profile_path: str) -> AIModeResult:
         """Execute scraping using the working scraper approach"""
         # Get location settings
@@ -311,9 +460,15 @@ class WorkerService:
                 '--disable-infobars', 
                 '--disable-notifications',
                 '--start-maximized',
-                '--disable-gpu', 
                 '--window-size=1920,1080',
             ]
+
+            # CHECK HEADLESS ENV VAR
+            is_headless = os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes")
+            
+            # USE CHROME'S NEW HEADLESS MODE
+            if is_headless:
+                launch_args.append('--headless=new')
             
             # Add proxy configuration if available
             proxy_config = None
@@ -324,18 +479,18 @@ class WorkerService:
                     "password": self.proxy_password
                 }
                 logger.info(f"🌐 Using proxy: {self.proxy_server}")
-                logger.info(f"🌐 Using proxy config: {proxy_config}")
             
             # Launch browser with stealth
             context = await p.chromium.launch_persistent_context(
                 user_data_dir=profile_path,
-                headless=os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes"),
+                headless=False, # Playwright headless must be False to allow --headless=new arg to work
                 args=launch_args,
                 ignore_default_args=['--enable-automation'],
                 locale=location_settings['locale'],
                 timezone_id=location_settings['timezone_id'],
                 geolocation=location_settings['geolocation'],
                 permissions=location_settings['permissions'],
+                no_viewport=True, # PREVENT VIEWPORT MISMATCH
                 extra_http_headers={
                     **location_settings['extra_http_headers'],
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -352,11 +507,16 @@ class WorkerService:
                 proxy=proxy_config
             )
             
-            page = await context.new_page()
+            # Use the first page created by launch_persistent_context or create new one
+            page = context.pages[0] if context.pages else await context.new_page()
             
+            # === CRITICAL FIX: APPLY STEALTH SCRIPTS ===
+            await self._add_stealth_scripts(page)
+            # ===========================================
+
             try:
                 # Execute scrape using working scraper
-                result = await self.scraper.scrape(page, query, location)
+                result = await self.scraper.scrape(page, query, location, job_id)
                 return result
             finally:
                 await context.close()
