@@ -742,6 +742,7 @@ class GoogleAIModeScraper:
                     print("   Button clicked but no AI content detected. Moving to fallback...", flush=True)
             else:
                 print("   Button not found. Moving to fallback...", flush=True)
+                await upload_screenshot_to_supabase(page, "90_No_Button_Found", job_id)
 
             # ==============================================================================
             # PHASE 3: FALLBACK TO URL INJECTION (Triggered if Phase 2 Failed)
@@ -759,9 +760,11 @@ class GoogleAIModeScraper:
                     await page.goto(new_url, wait_until="domcontentloaded")
                     await self._random_wait(2.0, 4.0)
                     await self._wait_for_ai_mode_complete(page)
+                    await upload_screenshot_to_supabase(page, "81_fallback_ai_mode_url_injection", job_id)
                 else:
                     print("   Already on udm=50 URL, just waiting...", flush=True)
                     await self._wait_for_ai_mode_complete(page)
+                    
 
             # ==============================================================================
             # PHASE 4: BOT DETECTION & EXTRACTION
