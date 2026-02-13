@@ -253,6 +253,8 @@ class WorkerService:
                 await self._save_result(job_id, product_id, query, result)
             else:
                 logger.warning(f"⚠️ Job {job_id} failed: {result.error_message}")
+                # Report failure immediately so frontend stops polling
+                await self._save_failure(job_id, product_id, query, result.error_message, location)
                 # Remove from processed jobs to allow retry
                 await self._remove_processed_job(job_id)
                 
@@ -260,6 +262,8 @@ class WorkerService:
             logger.error(f"❌ Critical error processing job {job_id}: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
+            # Report failure immediately so frontend stops polling
+            await self._save_failure(job_id, product_id, query, str(e), location)
             # Remove from processed jobs to allow retry
             await self._remove_processed_job(job_id)
         finally:
@@ -483,7 +487,7 @@ class WorkerService:
             # Launch browser with stealth
             context = await p.chromium.launch_persistent_context(
                 user_data_dir=profile_path,
-                headless=False, # Playwright headless must be False to allow --headless=new arg to work
+                headless=False, # Respect HEADLESS env var to prevent hangs in server environments
                 args=launch_args,
                 ignore_default_args=['--enable-automation'],
                 locale=location_settings['locale'],
@@ -670,7 +674,85 @@ class WorkerService:
                 logger.error(f"🐛 DEBUG: Traceback: {traceback.format_exc()}")
             # Don't fail the job if save fails
             # The scraping was successful, just log the error
-    
+
+    async def _save_failure(self, job_id: str, product_id: str, query: str, error_message: str, location: str):
+        """Save failure record to database or send to API so frontend stops polling"""
+        try:
+            if self.debug:
+                logger.info(f"🐛 DEBUG: Saving failure for job {job_id}")
+                logger.info(f"🐛 DEBUG: Error message: {error_message}")
+                logger.info(f"🐛 DEBUG: Storage mode: {'API' if self.storage_mode_api else 'Supabase'}")
+
+            # Prepare failure data with default empty values for required fields
+            scrape_data = {
+                "product_id": product_id,
+                "search_query": query,
+                "raw_serp_results": {
+                    "query": query,
+                    "success": False,
+                    "location": location,
+                    "timestamp": datetime.now().isoformat(),
+                    "source_links": [],  # Empty list for failures
+                    "error_message": error_message,
+                    "original_query": query,
+                    "structure_type": "structure_b",
+                    "ai_overview_text": "",  # Empty text for failures
+                    "ai_overview_found": False,
+                    "query_modifications_tried": [query],
+                    "did_query_popped_AI_overview": False,
+                    "ai_mode_found": False,
+                    "ai_mode_text": ""
+                }
+            }
+
+            # For API mode, send the exact format required
+            api_data = {
+                "product_id": product_id,
+                "query": query,
+                "success": False,
+                "location": location,
+                "timestamp": datetime.now().isoformat(),
+                "source_links": [],  # Empty list for failures
+                "error_message": error_message,
+                "original_query": query,
+                "structure_type": "structure_b",
+                "ai_overview_text": "",  # Empty text for failures
+                "ai_overview_found": False,
+                "query_modifications_tried": [query],
+                "did_query_popped_AI_overview": False,
+                "ai_mode_found": False,
+                "ai_mode_text": "false"
+            }
+
+            if self.debug:
+                logger.info(f"🐛 DEBUG: Prepared failure_data with {len(scrape_data)} fields")
+                logger.info(f"🐛 DEBUG: Failure data keys: {list(scrape_data.keys())}")
+
+            # Use storage mode switch
+            if self.storage_mode_api:
+                # Send to API callback
+                if self.debug:
+                    logger.info(f"🐛 DEBUG: Sending failure to API callback at {self.callback_api_url}")
+                await self._send_to_api(job_id, api_data)
+            else:
+                # Save to Supabase
+                if self.debug:
+                    logger.info(f"🐛 DEBUG: Saving failure to Supabase table: product_analysis_google")
+
+                response = self.supabase.table("product_analysis_google").insert(scrape_data).execute()
+
+                if response.data:
+                    logger.info(f"✅ Saved failure to Supabase: {response.data[0].get('id')}")
+                    if self.debug:
+                        logger.info(f"🐛 DEBUG: Successfully saved failure with ID: {response.data[0].get('id')}")
+                else:
+                    logger.error(f"❌ Failed to save failure to Supabase: {response}")
+
+        except Exception as e:
+            logger.error(f"❌ Error saving failure for job {job_id}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
     async def _send_to_api(self, job_id: str, result_data: dict):
         """Send scraping result to callback API"""
         try:
