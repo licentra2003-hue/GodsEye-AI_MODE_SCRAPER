@@ -325,55 +325,224 @@ class GoogleAIModeScraper:
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         ]
 
+    # async def scrape(self, page: Page, query: str, location: str = "India", job_id: str = None) -> AIModeResult:
+    #     timestamp = datetime.now().isoformat()
+        
+    #     print(f"\n{'='*80}")
+    #     print(f"Starting Google AI Mode Scraper")
+    #     print(f"Query: {query}")
+    #     print(f"Location: {location}")
+    #     print(f"Job ID: {job_id}")
+    #     print(f"{'='*80}\n")
+        
+    #     # Properly encode the query for URL
+    #     encoded_query = quote_plus(query)
+        
+    #     try:
+    #         # Step 1: Navigate to Google AI Mode directly with query
+    #         print("Navigating to Google AI Mode with query...")
+    #         await page.goto(f"https://www.google.com/search?udm=50&sei=&q={encoded_query}", wait_until="domcontentloaded", timeout=60000)
+    #         await self._random_wait(0.5, 1.0)
+
+    #         # Step 2: Handle cookie consent
+    #         await self._handle_cookie_consent(page)
+
+    #         # Step 3: Perform search and click AI Mode directly
+    #         print(f"Searching for: '{query}'")
+    #         # ai_mode_clicked = await self._simple_search(page, query, job_id)
+            
+    #         # if not ai_mode_clicked:
+    #         #     print("Could not find or click AI Mode link")
+    #         #     # Screenshot when AI Mode link not found
+    #         #     await upload_screenshot_to_supabase(page, "98_ai_mode_not_found", job_id)
+    #         #     return AIModeResult(
+    #         #         query=query,
+    #         #         original_query=query,
+    #         #         ai_mode_found=False,
+    #         #         success=False,
+    #         #         timestamp=timestamp,
+    #         #         location=location,
+    #         #         error_message="AI Mode link not found on search results"
+    #         #     )
+
+    #         # Step 5: Wait for AI Mode to load and complete
+    #         print("\nWaiting for AI Mode response to complete...")
+    #         await self._wait_for_ai_mode_complete(page)
+
+    #         # Check for bot detection
+    #         page_text = await page.locator("body").inner_text()
+    #         if self._is_bot_detected(page_text):
+    #             print("Bot detection triggered!")
+    #             # Screenshot when bot detection occurs
+    #             await upload_screenshot_to_supabase(page, "99_bot_detection", job_id)
+    #             return AIModeResult(
+    #                 query=query,
+    #                 original_query=query,
+    #                 ai_mode_found=False,
+    #                 success=False,
+    #                 timestamp=timestamp,
+    #                 location=location,
+    #                 error_message="Bot detection / CAPTCHA encountered"
+    #             )
+
+    #         # Step 6: Verify AI Mode is present
+    #         ai_mode_present = await self._detect_ai_mode(page)
+    #         if not ai_mode_present:
+    #             print("No AI Mode content found")
+    #             # Screenshot when AI Mode content not detected
+    #             await upload_screenshot_to_supabase(page, "97_ai_mode_content_not_found", job_id)
+    #             return AIModeResult(
+    #                 query=query,
+    #                 original_query=query,
+    #                 ai_mode_found=False,
+    #                 success=False,
+    #                 timestamp=timestamp,
+    #                 location=location,
+    #                 error_message="No AI Mode content detected"
+    #             )
+
+    #         # Step 7: Expand content if needed
+    #         await self._expand_content(page)
+
+    #         # Step 8: Extract AI Mode text
+    #         print("\nExtracting AI Mode text...")
+    #         ai_text = await self._extract_ai_mode_text(page)
+            
+    #         if not ai_text:
+    #             print("Could not extract AI Mode text")
+    #             return AIModeResult(
+    #                 query=query,
+    #                 original_query=query,
+    #                 ai_mode_found=False,
+    #                 success=False,
+    #                 timestamp=timestamp,
+    #                 location=location,
+    #                 error_message="Could not extract AI Mode text content"
+    #             )
+
+    #         # Step 9: Click "Show all related links"
+    #         print("\nClicking 'Show all related links'...")
+    #         await self._show_all_sources(page)
+
+    #         # Step 10: Extract sources
+    #         print("\nExtracting sources...")
+    #         sources = await self._extract_sources(page)
+
+    #         print(f"\nSuccessfully extracted AI Mode response")
+    #         print(f"  - Text length: {len(ai_text)} characters")
+    #         print(f"  - Sources found: {len(sources)}")
+
+    #         return AIModeResult(
+    #             query=query,
+    #             original_query=query,
+    #             ai_mode_found=True,
+    #             ai_mode_text=ai_text,
+    #             source_links=sources,
+    #             success=True,
+    #             timestamp=timestamp,
+    #             location=location
+    #         )
+
+    #     except Exception as e:
+    #         print(f"\nCritical error: {e}")
+    #         import traceback
+    #         traceback.print_exc()
+    #         return AIModeResult(
+    #             query=query,
+    #             original_query=query,
+    #             ai_mode_found=False,
+    #             success=False,
+    #             timestamp=timestamp,
+    #             location=location,
+    #             error_message=str(e)
+    #         )
+
+
+
     async def scrape(self, page: Page, query: str, location: str = "India", job_id: str = None) -> AIModeResult:
+        """
+        Hybrid Scraper Strategy:
+        1. Navigate to Homepage (sets cookies/trust)
+        2. Type and Search like a Human (establishes behavioral patterns)
+        3. Force AI Mode via URL parameter (bypasses UI variations/missing buttons)
+        """
         timestamp = datetime.now().isoformat()
         
-        print(f"\n{'='*80}")
-        print(f"Starting Google AI Mode Scraper")
-        print(f"Query: {query}")
-        print(f"Location: {location}")
-        print(f"Job ID: {job_id}")
-        print(f"{'='*80}\n")
-        
-        # Properly encode the query for URL
-        encoded_query = quote_plus(query)
+        print(f"\n{'='*80}", flush=True)
+        print(f" Starting Hybrid Google Scraper", flush=True)
+        print(f"Query: {query}", flush=True)
+        print(f"Location: {location}", flush=True)
+        print(f"Job ID: {job_id}", flush=True)
+        print(f"{'='*80}\n", flush=True)
         
         try:
-            # Step 1: Navigate to Google AI Mode directly with query
-            print("Navigating to Google AI Mode with query...")
-            await page.goto(f"https://www.google.com/search?udm=50&sei=&q={encoded_query}", wait_until="domcontentloaded", timeout=60000)
-            await self._random_wait(0.5, 1.0)
+            # ==============================================================================
+            # STEP 1: ESTABLISH TRUST (Navigate to Homepage)
+            # ==============================================================================
+            print(" Navigating to Google Homepage...", flush=True)
+            await page.goto("https://www.google.com/", wait_until="domcontentloaded", timeout=60000)
+            await self._random_wait(1.0, 2.0)
 
-            # Step 2: Handle cookie consent
+            # Handle cookies immediately
             await self._handle_cookie_consent(page)
 
-            # Step 3: Perform search and click AI Mode directly
-            print(f"Searching for: '{query}'")
-            # ai_mode_clicked = await self._simple_search(page, query, job_id)
+            # ==============================================================================
+            # STEP 2: PERFORM HUMAN SEARCH
+            # ==============================================================================
+            print(" Performing human search...", flush=True)
+            try:
+                # Find search box (works for both desktop and mobile views)
+                search_box = page.locator('textarea[name="q"], input[name="q"]').first
+                await search_box.wait_for(state="visible", timeout=10000)
+                
+                # Click and Type
+                await search_box.click()
+                await self._random_wait(0.2, 0.5)
+                await search_box.type(query, delay=random.uniform(50, 120))  # Slower, human-like typing
+                await self._random_wait(0.5, 1.0)
+                
+                # Press Enter
+                await page.keyboard.press("Enter")
+                print("   Search submitted via keyboard", flush=True)
+                
+                # Wait for initial standard results to ensure session is registered
+                await page.wait_for_selector('#search, #rso', timeout=20000)
+                print("   Initial search results loaded", flush=True)
+                
+            except Exception as e:
+                print(f"   Search interaction issue: {e}", flush=True)
+                # Fallback: If typing failed, try direct nav (less safe, but better than crashing)
+                encoded = quote_plus(query)
+                await page.goto(f"https://www.google.com/search?q={encoded}", wait_until="domcontentloaded")
+
+            await self._random_wait(2.0, 4.0)
+
+            # ==============================================================================
+            # STEP 3: FORCE AI MODE (The "Trojan Horse")
+            # ==============================================================================
+            # Instead of looking for a button, we modify the URL of the *active trusted session*
+            current_url = page.url
             
-            # if not ai_mode_clicked:
-            #     print("Could not find or click AI Mode link")
-            #     # Screenshot when AI Mode link not found
-            #     await upload_screenshot_to_supabase(page, "98_ai_mode_not_found", job_id)
-            #     return AIModeResult(
-            #         query=query,
-            #         original_query=query,
-            #         ai_mode_found=False,
-            #         success=False,
-            #         timestamp=timestamp,
-            #         location=location,
-            #         error_message="AI Mode link not found on search results"
-            #     )
+            # Check if AI mode is already active (sometimes auto-triggers)
+            if "udm=50" in current_url:
+                print("   AI Mode already active in URL", flush=True)
+            else:
+                print(" Forcing AI Mode via URL parameter (maintaining trusted session)...", flush=True)
+                
+                # Construct new URL properly handling existing parameters
+                separator = "&" if "?" in current_url else "?"
+                new_url = f"{current_url}{separator}udm=50"
+                
+                # Navigate to the forced AI view
+                await page.goto(new_url, wait_until="domcontentloaded")
+                await self._random_wait(2.0, 3.0)
 
-            # Step 5: Wait for AI Mode to load and complete
-            print("\nWaiting for AI Mode response to complete...")
-            await self._wait_for_ai_mode_complete(page)
-
-            # Check for bot detection
+            # ==============================================================================
+            # STEP 4: BOT DETECTION CHECK
+            # ==============================================================================
             page_text = await page.locator("body").inner_text()
             if self._is_bot_detected(page_text):
-                print("Bot detection triggered!")
-                # Screenshot when bot detection occurs
+                print(" Bot detection triggered!", flush=True)
                 await upload_screenshot_to_supabase(page, "99_bot_detection", job_id)
                 return AIModeResult(
                     query=query,
@@ -385,12 +554,17 @@ class GoogleAIModeScraper:
                     error_message="Bot detection / CAPTCHA encountered"
                 )
 
-            # Step 6: Verify AI Mode is present
+            # ==============================================================================
+            # STEP 5: WAIT FOR & DETECT CONTENT
+            # ==============================================================================
+            print(" Waiting for AI content...", flush=True)
+            await self._wait_for_ai_mode_complete(page)
+
+            # Verify AI content presence
             ai_mode_present = await self._detect_ai_mode(page)
             if not ai_mode_present:
-                print("No AI Mode content found")
-                # Screenshot when AI Mode content not detected
-                await upload_screenshot_to_supabase(page, "97_ai_mode_content_not_found", job_id)
+                print(" AI Mode content still not found after forcing", flush=True)
+                await upload_screenshot_to_supabase(page, "97_ai_content_missing", job_id)
                 return AIModeResult(
                     query=query,
                     original_query=query,
@@ -401,15 +575,18 @@ class GoogleAIModeScraper:
                     error_message="No AI Mode content detected"
                 )
 
-            # Step 7: Expand content if needed
+            # ==============================================================================
+            # STEP 6: EXTRACT DATA
+            # ==============================================================================
+            # Expand "Show more" buttons
             await self._expand_content(page)
 
-            # Step 8: Extract AI Mode text
-            print("\nExtracting AI Mode text...")
+            # Extract Text
+            print("\n Extracting AI Mode text...", flush=True)
             ai_text = await self._extract_ai_mode_text(page)
             
             if not ai_text:
-                print("Could not extract AI Mode text")
+                print(" Could not extract AI Mode text", flush=True)
                 return AIModeResult(
                     query=query,
                     original_query=query,
@@ -420,15 +597,14 @@ class GoogleAIModeScraper:
                     error_message="Could not extract AI Mode text content"
                 )
 
-            # Step 9: Click "Show all related links"
-            print("\nClicking 'Show all related links'...")
+            # Extract Sources
+            print("\n Clicking 'Show all related links'...", flush=True)
             await self._show_all_sources(page)
 
-            # Step 10: Extract sources
-            print("\nExtracting sources...")
+            print("\n Extracting sources...", flush=True)
             sources = await self._extract_sources(page)
 
-            print(f"\nSuccessfully extracted AI Mode response")
+            print(f"\n Successfully extracted AI Mode response", flush=True)
             print(f"  - Text length: {len(ai_text)} characters")
             print(f"  - Sources found: {len(sources)}")
 
@@ -444,7 +620,7 @@ class GoogleAIModeScraper:
             )
 
         except Exception as e:
-            print(f"\nCritical error: {e}")
+            print(f"\n Critical error: {e}", flush=True)
             import traceback
             traceback.print_exc()
             return AIModeResult(
@@ -747,122 +923,250 @@ class GoogleAIModeScraper:
         
         print("    No 'Show all' button found (sources might already be expanded)")
 
-    async def _extract_sources(self, page: Page) -> List[SourceLink]:
-        """Extract sources from ul.bTFeG > li.CyMdWb"""
-        print("  Extracting sources from list...")
+    # async def _extract_sources(self, page: Page) -> List[SourceLink]:
+    #     """Extract sources from ul.bTFeG > li.CyMdWb"""
+    #     print("  Extracting sources from list...")
         
+    #     sources = []
+        
+    #     try:
+    #         # Find the sources list (ul.bTFeG)
+    #         sources_list = page.locator('ul.bTFeG').first
+            
+    #         if await sources_list.count() == 0:
+    #             print("    Sources list (ul.bTFeG) not found")
+    #             return sources
+            
+    #         # Get all source items (li.CyMdWb)
+    #         source_items = sources_list.locator('li.CyMdWb')
+    #         item_count = await source_items.count()
+            
+    #         print(f"    Found {item_count} source items")
+            
+    #         for idx in range(item_count):
+    #             try:
+    #                 item = source_items.nth(idx)
+                    
+    #                 # Extract URL (a.NDNGvf)
+    #                 url = ""
+    #                 try:
+    #                     anchor = item.locator('a.NDNGvf').first
+    #                     url = await anchor.get_attribute('href') or ""
+    #                 except:
+    #                     pass
+                    
+    #                 if not url:
+    #                     print(f"      Item {idx+1}: No URL found, skipping")
+    #                     continue
+                    
+    #                 # Extract Title (div.Nn35F)
+    #                 title = ""
+    #                 try:
+    #                     title_elem = item.locator('div.Nn35F').first
+    #                     title = await title_elem.inner_text()
+    #                 except:
+    #                     title = "Unknown Title"
+                    
+    #                 # Extract Snippet (span.vhJ6Pe)
+    #                 snippet = ""
+    #                 try:
+    #                     snippet_elem = item.locator('span.vhJ6Pe').first
+    #                     snippet = await snippet_elem.inner_text()
+    #                 except:
+    #                     pass
+                    
+    #                 # Extract Domain (span.R0r5R)
+    #                 domain = ""
+    #                 try:
+    #                     domain_elem = item.locator('span.R0r5R').first
+    #                     domain = await domain_elem.inner_text()
+    #                 except:
+    #                     # Fallback: extract from URL
+    #                     from urllib.parse import urlparse
+    #                     parsed = urlparse(url)
+    #                     domain = parsed.netloc
+                    
+    #                 # Extract Favicon (img.sGgDgb or img.aWLPic)
+    #                 favicon_url = ""
+    #                 try:
+    #                     favicon_img = item.locator('img.sGgDgb, img.aWLPic').first
+    #                     favicon_url = await favicon_img.get_attribute('src') or ""
+    #                 except:
+    #                     pass
+                    
+    #                 # Extract Thumbnail (img.nHPWpc)
+    #                 thumbnail_url = ""
+    #                 try:
+    #                     thumbnail_img = item.locator('img.nHPWpc').first
+    #                     thumbnail_url = await thumbnail_img.get_attribute('src') or ""
+    #                 except:
+    #                     pass
+                    
+    #                 # Extract Date (usually in snippet like "15 Jan 2026 —")
+    #                 date = ""
+    #                 try:
+    #                     date_match = re.search(r'(\d{1,2}\s+\w+\s+\d{4})', snippet)
+    #                     if date_match:
+    #                         date = date_match.group(1)
+    #                 except:
+    #                     pass
+                    
+    #                 # Create source object
+    #                 source = SourceLink(
+    #                     text=self._clean_text(title),
+    #                     url=url,
+    #                     snippet=self._clean_text(snippet),
+    #                     domain=self._clean_text(domain),
+    #                     favicon_url=favicon_url,
+    #                     thumbnail_url=thumbnail_url,
+    #                     date=date,
+    #                     position=len(sources) + 1
+    #                 )
+                    
+    #                 sources.append(source)
+    #                 print(f"      Source {idx+1}: {title[:50]}... ({domain})")
+                    
+    #             except Exception as e:
+    #                 print(f"      Source {idx+1} error: {str(e)[:60]}")
+    #                 continue
+            
+    #         print(f"\n    Successfully extracted {len(sources)} sources")
+    #         return sources
+            
+    #     except Exception as e:
+    #         print(f"    Failed to extract sources: {e}")
+    #         import traceback
+    #         traceback.print_exc()
+    #         return sources
+
+
+    async def _extract_sources(self, page: Page) -> List[SourceLink]:
+        """Extract sources using multiple selector strategies"""
+        print("  📚 Extracting sources...")
         sources = []
         
         try:
-            # Find the sources list (ul.bTFeG)
-            sources_list = page.locator('ul.bTFeG').first
+            # Strategy 1: Look for the standard list items (legacy)
+            # Strategy 2: Look for any source card that contains a domain (span.R0r5R)
+            # Strategy 3: Look for links with specific source attributes
             
-            if await sources_list.count() == 0:
-                print("    Sources list (ul.bTFeG) not found")
-                return sources
+            # We'll use a broad evaluation to find source blocks regardless of container
+            found_items = await page.evaluate("""() => {
+                const items = [];
+                const seenUrls = new Set();
+                
+                // Helper to clean text
+                const clean = (t) => t ? t.textContent.replace(/\\s+/g, ' ').trim() : '';
+                
+                // Potential selectors for Source Cards
+                // 1. The standard list item
+                // 2. Any element containing a domain span (R0r5R)
+                // 3. Grid items in AI overviews
+                const selectors = [
+                    'li.CyMdWb',                    // Standard list item
+                    'div.MjjYud a.NDNGvf',          // Standard link container
+                    'div.hJDwNd',                   // Carousel item
+                    'div[jsname="I3kE2c"]',         // Generic source container
+                    '.OSrXXb'                       // Another common card container
+                ];
+                
+                // Collect all potential elements
+                let allElements = [];
+                selectors.forEach(sel => {
+                    document.querySelectorAll(sel).forEach(el => allElements.push(el));
+                });
+                
+                // If no specific containers found, look for the "Domain" span pattern
+                if (allElements.length === 0) {
+                    document.querySelectorAll('span.R0r5R').forEach(span => {
+                        // Go up to find the main link container
+                        const card = span.closest('a') || span.closest('div.MjjYud') || span.closest('li');
+                        if (card) allElements.push(card);
+                    });
+                }
+
+                for (const el of allElements) {
+                    // Find the anchor tag
+                    const anchor = el.tagName === 'A' ? el : el.querySelector('a');
+                    if (!anchor) continue;
+                    
+                    const url = anchor.getAttribute('href');
+                    if (!url || !url.startsWith('http') || seenUrls.has(url)) continue;
+                    
+                    // Exclude google links
+                    if (url.includes('google.com')) continue;
+
+                    seenUrls.add(url);
+                    
+                    // Extract Details
+                    let title = '';
+                    let domain = '';
+                    let date = '';
+                    
+                    // Title: usually in div.Nn35F or h3
+                    const titleEl = el.querySelector('div.Nn35F') || el.querySelector('h3') || el.querySelector('.LC20lb');
+                    if (titleEl) title = clean(titleEl);
+                    
+                    // Domain: usually in span.R0r5R or cite
+                    const domainEl = el.querySelector('span.R0r5R') || el.querySelector('cite') || el.querySelector('.VuuXrf');
+                    if (domainEl) domain = clean(domainEl);
+                    
+                    // Snippet: usually in span.vhJ6Pe
+                    const snippetEl = el.querySelector('span.vhJ6Pe') || el.querySelector('.VwiC3b');
+                    let snippet = snippetEl ? clean(snippetEl) : '';
+                    
+                    // Extract Date from snippet (Regex fallback in python)
+                    
+                    // Images
+                    const faviconEl = el.querySelector('img.sGgDgb') || el.querySelector('img.XNo5Ab');
+                    const thumbEl = el.querySelector('img.nHPWpc');
+                    
+                    items.push({
+                        url: url,
+                        text: title || domain || 'Source',
+                        snippet: snippet,
+                        domain: domain,
+                        favicon_url: faviconEl ? faviconEl.src : '',
+                        thumbnail_url: thumbEl ? thumbEl.src : ''
+                    });
+                }
+                return items;
+            }""")
             
-            # Get all source items (li.CyMdWb)
-            source_items = sources_list.locator('li.CyMdWb')
-            item_count = await source_items.count()
+            # Process results into Pydantic models
+            print(f"    ✓ Found {len(found_items)} potential sources via JS evaluation")
             
-            print(f"    Found {item_count} source items")
-            
-            for idx in range(item_count):
+            for idx, item in enumerate(found_items):
+                # Extra cleanup or validation if needed
+                date = ""
+                # Try to extract date from snippet
                 try:
-                    item = source_items.nth(idx)
-                    
-                    # Extract URL (a.NDNGvf)
-                    url = ""
-                    try:
-                        anchor = item.locator('a.NDNGvf').first
-                        url = await anchor.get_attribute('href') or ""
-                    except:
-                        pass
-                    
-                    if not url:
-                        print(f"      Item {idx+1}: No URL found, skipping")
-                        continue
-                    
-                    # Extract Title (div.Nn35F)
-                    title = ""
-                    try:
-                        title_elem = item.locator('div.Nn35F').first
-                        title = await title_elem.inner_text()
-                    except:
-                        title = "Unknown Title"
-                    
-                    # Extract Snippet (span.vhJ6Pe)
-                    snippet = ""
-                    try:
-                        snippet_elem = item.locator('span.vhJ6Pe').first
-                        snippet = await snippet_elem.inner_text()
-                    except:
-                        pass
-                    
-                    # Extract Domain (span.R0r5R)
-                    domain = ""
-                    try:
-                        domain_elem = item.locator('span.R0r5R').first
-                        domain = await domain_elem.inner_text()
-                    except:
-                        # Fallback: extract from URL
-                        from urllib.parse import urlparse
-                        parsed = urlparse(url)
-                        domain = parsed.netloc
-                    
-                    # Extract Favicon (img.sGgDgb or img.aWLPic)
-                    favicon_url = ""
-                    try:
-                        favicon_img = item.locator('img.sGgDgb, img.aWLPic').first
-                        favicon_url = await favicon_img.get_attribute('src') or ""
-                    except:
-                        pass
-                    
-                    # Extract Thumbnail (img.nHPWpc)
-                    thumbnail_url = ""
-                    try:
-                        thumbnail_img = item.locator('img.nHPWpc').first
-                        thumbnail_url = await thumbnail_img.get_attribute('src') or ""
-                    except:
-                        pass
-                    
-                    # Extract Date (usually in snippet like "15 Jan 2026 —")
-                    date = ""
-                    try:
-                        date_match = re.search(r'(\d{1,2}\s+\w+\s+\d{4})', snippet)
-                        if date_match:
-                            date = date_match.group(1)
-                    except:
-                        pass
-                    
-                    # Create source object
-                    source = SourceLink(
-                        text=self._clean_text(title),
-                        url=url,
-                        snippet=self._clean_text(snippet),
-                        domain=self._clean_text(domain),
-                        favicon_url=favicon_url,
-                        thumbnail_url=thumbnail_url,
-                        date=date,
-                        position=len(sources) + 1
-                    )
-                    
-                    sources.append(source)
-                    print(f"      Source {idx+1}: {title[:50]}... ({domain})")
-                    
-                except Exception as e:
-                    print(f"      Source {idx+1} error: {str(e)[:60]}")
-                    continue
-            
-            print(f"\n    Successfully extracted {len(sources)} sources")
-            return sources
-            
-        except Exception as e:
-            print(f"    Failed to extract sources: {e}")
-            import traceback
-            traceback.print_exc()
+                    date_match = re.search(r'(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})|(\d{4}-\d{2}-\d{2})', item['snippet'])
+                    if date_match:
+                        date = date_match.group(0)
+                except:
+                    pass
+
+                source = SourceLink(
+                    text=self._clean_text(item['text']),
+                    url=item['url'],
+                    snippet=self._clean_text(item['snippet']),
+                    domain=self._clean_text(item['domain']),
+                    favicon_url=item['favicon_url'],
+                    thumbnail_url=item['thumbnail_url'],
+                    date=date,
+                    position=len(sources) + 1
+                )
+                sources.append(source)
+                print(f"      ✓ Source {idx+1}: {source.text[:40]}... ({source.domain})")
+
             return sources
 
+        except Exception as e:
+            print(f"    ✗ Failed to extract sources: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
     # ==================== UTILITY METHODS ====================
 
     def _is_bot_detected(self, page_text: str) -> bool:
