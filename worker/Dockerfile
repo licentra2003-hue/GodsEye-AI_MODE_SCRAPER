@@ -22,4 +22,5 @@ ENV PYTHONPATH=/app
 # No manual installation needed
 
 # Default command
-CMD ["python", "worker_main.py"]
+CMD ["python", "worker_batch.py"]
+# # CMD ["python", "worker_main.py"]

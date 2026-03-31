@@ -68,6 +68,7 @@ services:
     restart: unless-stopped
     environment:
       RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672/
+      BATCH_SIZE: 4
       POSTGRES_URL: postgres://postgres:postgres123@postgres:5432/godseye
       WORKER_ID: ${WORKER_ID:-worker-1}
       SUPABASE_URL: https://bnrpcmwkqqdmweoxkmth.supabase.co

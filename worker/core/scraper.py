@@ -51,7 +51,7 @@ async def upload_screenshot_to_supabase(page: Page, name: str, job_id: str = Non
     try:
         print(f"  📸 Taking screenshot: {name}")
         # Take screenshot as bytes
-        screenshot_bytes = await page.screenshot(full_page=False)
+        screenshot_bytes = await page.screenshot(full_page=False, timeout=40000)
         
         # Create filename with timestamp and job_id
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -90,7 +90,7 @@ async def take_debug_screenshot(page: Page, name: str):
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"debug_{name}_{timestamp}.png"
-            await page.screenshot(path=filename, full_page=True)
+            await page.screenshot(path=filename, full_page=True, timeout=40000)
             print(f"  Debug screenshot saved: {filename}")
         except Exception as e:
             print(f"  Failed to take debug screenshot: {e}")
@@ -716,7 +716,7 @@ class GoogleAIModeScraper:
             except Exception as e:
                 print(f"   ⚠️ Natural search failed ({e}), falling back to direct navigation...", flush=True)
                 encoded = quote_plus(query)
-                await page.goto(f"https://www.google.com/search?q={encoded}", wait_until="domcontentloaded")
+                await page.goto(f"https://www.google.com/search?q={encoded}", wait_until="domcontentloaded", timeout=40000)
 
             await self._random_wait(2.0, 3.0)
 
@@ -757,7 +757,7 @@ class GoogleAIModeScraper:
                     new_url = f"{current_url}{separator}udm=50"
                     
                     # Navigate keeping current session cookies
-                    await page.goto(new_url, wait_until="domcontentloaded")
+                    await page.goto(new_url, wait_until="domcontentloaded", timeout=40000)
                     await self._random_wait(2.0, 4.0)
                     await self._wait_for_ai_mode_complete(page)
                     await upload_screenshot_to_supabase(page, "81_fallback_ai_mode_url_injection", job_id)

@@ -17,23 +17,28 @@ GATEWAY_URL = "http://localhost:8080"
 TEST_QUERIES = [
     {
         "query": "best mobile app development frameworks 2024",
-        "location": "India"
+        "location": "India",
+        "product_id": "b36b116e-0c19-4fa0-b669-835bd76c820e"
     },
     {
         "query": "Best MMP Platforms in India",
-        "location": "India" 
+        "location": "India",
+        "product_id": "b36b116e-0c19-4fa0-b669-835bd76c820e"
     },
     {
         "query": "artificial intelligence tools for business",
-        "location": "India"
+        "location": "India",
+        "product_id": "b36b116e-0c19-4fa0-b669-835bd76c820e"
     },
     {
         "query": "cybersecurity best practices 2024",
-        "location": "India"
+        "location": "India",
+        "product_id": "b36b116e-0c19-4fa0-b669-835bd76c820e"
     },
     {
         "query": "blockchain technology use cases",
-        "location": "India"
+        "location": "India",
+        "product_id": "b36b116e-0c19-4fa0-b669-835bd76c820e"
     }
 ]
 
