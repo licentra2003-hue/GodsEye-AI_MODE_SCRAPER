@@ -623,15 +623,15 @@ class WorkerService:
                         should_ack = False
                     else:
                         logger.error(f"Tab {idx+1}: Max bot retries (2) reached for '{query}'")
-                        logger.warning(
-                            f"Tab {idx+1}: scraper returned failure for '{query}' "
-                            f"— {result.error_message}"
-                        )
+                        # Save the final failure so the client is notified
+                        await self._save_result(job_id, prod_id, query, result)
                 else:
                     logger.warning(
                         f"Tab {idx+1}: scraper returned failure for '{query}' "
                         f"— {result.error_message}"
                     )
+                    # Save the failure result so the client knows it finished with error
+                    await self._save_result(job_id, prod_id, query, result)
                 # ACK is handled in finally unless should_ack is False
                 # Do NOT unclaim for non-bot failures or max retries
 
