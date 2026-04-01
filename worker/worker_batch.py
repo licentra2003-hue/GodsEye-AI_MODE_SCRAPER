@@ -238,6 +238,40 @@ class WorkerService:
         except Exception as exc:
             logger.error(f"basic_nack failed for tag {delivery_tag}: {exc}")
 
+    def _requeue_job_to_end(self, job_data: dict, delivery_tag: int):
+        """Schedule a requeue in pika's I/O thread, publishing a new message so it goes to back."""
+        try:
+            self._connection.add_callback_threadsafe(
+                lambda: self._do_requeue_to_end(job_data, delivery_tag)
+            )
+        except Exception as exc:
+            logger.error(f"Could not schedule requeue for tag {delivery_tag}: {exc}")
+
+    def _do_requeue_to_end(self, job_data: dict, delivery_tag: int):
+        try:
+            payload = dict(job_data)
+            payload.pop('_delivery_tag', None)
+            
+            body = json.dumps(payload).encode("utf-8")
+            
+            self._channel.basic_publish(
+                exchange='',
+                routing_key="scrape_jobs",
+                body=body,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # Persistent
+                )
+            )
+            # ACK the old one so it's fully processed/removed from front of queue
+            self._channel.basic_ack(delivery_tag=delivery_tag)
+        except Exception as exc:
+            logger.error(f"basic_publish (requeue) failed for tag {delivery_tag}: {exc}")
+            # Fallback
+            try:
+                self._channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
+            except Exception as inner_exc:
+                logger.error(f"fallback nack failed for tag {delivery_tag}: {inner_exc}")
+
     # =========================================================================
     # Job claiming (atomic deduplication)
     # =========================================================================
@@ -549,6 +583,7 @@ class WorkerService:
         prod_id = job_data.get("product_id")
         dtag    = job_data["_delivery_tag"]
         page: Optional[Page] = None
+        should_ack = True
 
         try:
             # Stagger tabs to reduce simultaneous Google requests from one IP
@@ -572,12 +607,33 @@ class WorkerService:
                 logger.info(f"Tab {idx+1}: SUCCESS '{query}'")
                 await self._save_result(job_id, prod_id, query, result)
             else:
-                logger.warning(
-                    f"Tab {idx+1}: scraper returned failure for '{query}' "
-                    f"— {result.error_message}"
-                )
-                # ACK anyway — the scrape ran, it just found nothing.
-                # Do NOT unclaim; prevents infinite re-queue loops.
+                err_msg = (result.error_message or "").lower()
+                if "bot detection" in err_msg or "captcha" in err_msg:
+                    retry_count = job_data.get("_retry_count", 0)
+                    if retry_count < 2:
+                        logger.warning(
+                            f"Tab {idx+1}: Bot detected. Re-queueing job {job_id} "
+                            f"(Attempt {retry_count + 1}/2)"
+                        )
+                        # Increment retry count for the re-queued payload
+                        job_data["_retry_count"] = retry_count + 1
+                        self._unclaim_job(job_id)
+                        
+                        self._requeue_job_to_end(job_data, dtag)
+                        should_ack = False
+                    else:
+                        logger.error(f"Tab {idx+1}: Max bot retries (2) reached for '{query}'")
+                        logger.warning(
+                            f"Tab {idx+1}: scraper returned failure for '{query}' "
+                            f"— {result.error_message}"
+                        )
+                else:
+                    logger.warning(
+                        f"Tab {idx+1}: scraper returned failure for '{query}' "
+                        f"— {result.error_message}"
+                    )
+                # ACK is handled in finally unless should_ack is False
+                # Do NOT unclaim for non-bot failures or max retries
 
         except Exception as exc:
             # Log but do NOT re-raise — keeps sibling tabs alive
@@ -593,9 +649,11 @@ class WorkerService:
                     logger.warning(f"Page close error (tab {idx+1}): {exc}")
 
             # THE FIX: schedule ACK on pika's I/O thread via add_callback_threadsafe
-            # This is the only thread-safe way to ACK from a non-pika thread.
-            self._ack(dtag)
-            logger.info(f"ACK scheduled for {job_id} (tab {idx+1})")
+            if should_ack:
+                self._ack(dtag)
+                logger.info(f"ACK scheduled for {job_id} (tab {idx+1})")
+            else:
+                logger.info(f"ACK skipped for {job_id} (re-queued to back of line)")
 
     # =========================================================================
     # Stealth scripts
