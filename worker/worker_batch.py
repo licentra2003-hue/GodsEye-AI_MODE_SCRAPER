@@ -509,6 +509,7 @@ class WorkerService:
         location = jobs[0].get("location", "India")
         loc_cfg  = LOCATION_CONFIG.get(location, LOCATION_CONFIG["India"])
 
+        is_headless = os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes")
         launch_args = [
             "--disable-blink-features=AutomationControlled",
             "--no-sandbox",
@@ -519,8 +520,6 @@ class WorkerService:
             "--start-maximized",
             "--window-size=1920,1080",
         ]
-        if os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes"):
-            launch_args.append("--headless=new")
 
         proxy_config = None
         if self.proxy_server and self.proxy_username and self.proxy_password:
@@ -534,7 +533,7 @@ class WorkerService:
         async with async_playwright() as pw:
             context = await pw.chromium.launch_persistent_context(
                 user_data_dir=profile_path,
-                headless=False,  # actual headless via --headless=new in launch_args
+                headless=is_headless,
                 args=launch_args,
                 ignore_default_args=["--enable-automation"],
                 locale=loc_cfg["locale"],
@@ -662,7 +661,7 @@ class WorkerService:
 
     async def _apply_stealth_scripts(self, page: Page):
         script = r"""
-            Object.defineProperty(navigator, 'platform',           { get: () => 'Win32' });
+            Object.defineProperty(navigator, 'platform',           { get: () => 'Linux x86_64' });
             Object.defineProperty(navigator, 'webdriver',          { get: () => undefined });
             Object.defineProperty(navigator, 'hardwareConcurrency',{ get: () => 4 });
             Object.defineProperty(navigator, 'deviceMemory',       { get: () => 8 });
