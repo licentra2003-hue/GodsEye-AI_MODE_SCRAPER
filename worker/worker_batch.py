@@ -71,6 +71,7 @@ import random
 import sys
 import threading
 import traceback
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -542,7 +543,7 @@ class WorkerService:
                 permissions=loc_cfg["permissions"],
                 no_viewport=True,  # prevents viewport vs window-size mismatch
                 user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "Mozilla/5.0 (X11; Linux x86_64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
                     "Chrome/124.0.0.0 Safari/537.36"
                 ),
